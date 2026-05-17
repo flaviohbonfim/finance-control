@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "@/store/auth";
+import { useThemeStore } from "@/store/theme";
 import Layout from "@/components/layout/Layout";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
@@ -8,6 +10,7 @@ import Accounts from "@/pages/Accounts";
 import Categories from "@/pages/Categories";
 import Transactions from "@/pages/Transactions";
 import Reports from "@/pages/Reports";
+import Settings from "@/pages/Settings";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { token } = useAuthStore();
@@ -20,6 +23,12 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const { applyTheme } = useThemeStore();
+
+  useEffect(() => {
+    applyTheme();
+  }, [applyTheme]);
+
   return (
     <BrowserRouter>
       <Routes>
@@ -34,6 +43,7 @@ export default function App() {
           <Route path="accounts" element={<Accounts />} />
           <Route path="categories" element={<Categories />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

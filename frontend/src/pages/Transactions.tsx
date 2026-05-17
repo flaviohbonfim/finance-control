@@ -165,64 +165,74 @@ export default function Transactions() {
                 </Button>
               </div>
             ) : (
-              (data?.items || []).map((tx) => (
-                <div key={tx.id} className="grid grid-cols-2 sm:grid-cols-12 gap-2 px-4 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors items-center">
-                  {/* Type icon */}
-                  <div className="col-span-1 flex items-center">
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center"
-                      style={{
-                        backgroundColor: `${tx.category?.color || "#6366f1"}15`,
-                        color: tx.category?.color || "#6366f1",
-                      }}
-                    >
-                      {tx.type === "income" ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+              (data?.items || []).map((tx) => {
+                const iconStyle = {
+                  backgroundColor: `${tx.category?.color || "#6366f1"}15`,
+                  color: tx.category?.color || "#6366f1",
+                };
+                const amountClass = tx.type === "income" ? "text-green-600" : "text-red-500";
+                const amountStr = `${tx.type === "income" ? "+" : "-"}${fmt(Number(tx.amount))}`;
+
+                return (
+                  <div key={tx.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
+                    {/* Mobile layout */}
+                    <div className="flex sm:hidden items-center gap-3 px-4 py-3">
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={iconStyle}>
+                        {tx.type === "income" ? <TrendingUp size={15} /> : <TrendingDown size={15} />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-medium text-gray-900 truncate">{tx.description}</p>
+                          <span className={`text-sm font-semibold flex-shrink-0 ${amountClass}`}>{amountStr}</span>
+                        </div>
+                        <div className="flex items-center justify-between mt-0.5">
+                          <p className="text-xs text-gray-400">
+                            {tx.category?.name || "Sem categoria"} · {format(new Date(tx.transaction_date + "T12:00:00"), "dd/MM", { locale: ptBR })}
+                          </p>
+                          <div className="flex gap-1 ml-2">
+                            <button onClick={() => openEdit(tx)} className="p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100">
+                              <Pencil size={13} />
+                            </button>
+                            <button onClick={() => remove.mutate(tx.id)} className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50">
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Desktop layout */}
+                    <div className="hidden sm:grid grid-cols-12 gap-2 px-4 py-3 items-center">
+                      <div className="col-span-1 flex items-center">
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center" style={iconStyle}>
+                          {tx.type === "income" ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                        </div>
+                      </div>
+                      <div className="col-span-4 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{tx.description}</p>
+                        {tx.notes && <p className="text-xs text-gray-400 truncate">{tx.notes}</p>}
+                      </div>
+                      <div className="col-span-2">
+                        {tx.category && <Badge color={tx.category.color}>{tx.category.name}</Badge>}
+                      </div>
+                      <div className="col-span-2 text-sm text-gray-500">
+                        {format(new Date(tx.transaction_date + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR })}
+                      </div>
+                      <div className="col-span-2 text-right">
+                        <span className={`text-sm font-semibold ${amountClass}`}>{amountStr}</span>
+                      </div>
+                      <div className="col-span-1 flex justify-end gap-1">
+                        <button onClick={() => openEdit(tx)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+                          <Pencil size={13} />
+                        </button>
+                        <button onClick={() => remove.mutate(tx.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </div>
                   </div>
-
-                  {/* Description */}
-                  <div className="col-span-1 sm:col-span-4 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{tx.description}</p>
-                    {tx.notes && <p className="text-xs text-gray-400 truncate">{tx.notes}</p>}
-                  </div>
-
-                  {/* Category - hidden on mobile */}
-                  <div className="hidden sm:block col-span-2">
-                    {tx.category && (
-                      <Badge color={tx.category.color}>{tx.category.name}</Badge>
-                    )}
-                  </div>
-
-                  {/* Date - hidden on mobile */}
-                  <div className="hidden sm:block col-span-2 text-sm text-gray-500">
-                    {format(new Date(tx.transaction_date + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR })}
-                  </div>
-
-                  {/* Amount */}
-                  <div className="col-span-1 sm:col-span-2 text-right">
-                    <span className={`text-sm font-semibold ${tx.type === "income" ? "text-green-600" : "text-red-500"}`}>
-                      {tx.type === "income" ? "+" : "-"}
-                      {fmt(Number(tx.amount))}
-                    </span>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="hidden sm:flex col-span-1 justify-end gap-1">
-                    <button
-                      onClick={() => openEdit(tx)}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                    >
-                      <Pencil size={13} />
-                    </button>
-                    <button
-                      onClick={() => remove.mutate(tx.id)}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
 
             {/* Pagination */}

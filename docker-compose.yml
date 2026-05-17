@@ -38,19 +38,18 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: node:20-alpine
     container_name: finance_frontend
     restart: unless-stopped
+    working_dir: /app
     ports:
       - "5173:5173"
     environment:
-      - VITE_API_URL=http://localhost:8000
+      - VITE_API_URL=http://backend:8000
     volumes:
       - ./frontend:/app
       - /app/node_modules
-    command: npm run dev -- --host
+    command: sh -c "npm install && npm run dev -- --host"
 
 volumes:
   mysql_data:

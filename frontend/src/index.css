@@ -2,21 +2,123 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Theme CSS variables (set by JS on <html>) ─── */
+:root {
+  --theme-bg: #f9fafb;
+  --theme-surface: #ffffff;
+  --theme-surface2: #f3f4f6;
+  --theme-border: #e5e7eb;
+  --theme-text1: #111827;
+  --theme-text2: #4b5563;
+  --theme-text3: #9ca3af;
+  --theme-accent: #6366f1;
+  --theme-accent-hover: #4f46e5;
+  --theme-accent-light: #eef2ff;
+  --theme-accent-fg: #ffffff;
+  --theme-income: #16a34a;
+  --theme-income-light: #dcfce7;
+  --theme-expense: #dc2626;
+  --theme-expense-light: #fee2e2;
+  --theme-sidebar: #ffffff;
+  --theme-input-bg: #ffffff;
+}
+
+/* ─── Base ─── */
 @layer base {
-  * {
-    box-sizing: border-box;
-  }
+  * { box-sizing: border-box; }
+
   body {
-    @apply bg-gray-50 text-gray-900 antialiased;
+    background-color: var(--theme-bg);
+    color: var(--theme-text1);
+    @apply antialiased;
+    transition: background-color 0.2s, color 0.2s;
   }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--theme-bg); }
+  ::-webkit-scrollbar-thumb { background: var(--theme-border); border-radius: 3px; }
+}
+
+/* ─── Global theme overrides — applied to ALL themes ─── */
+/* These selectors override Tailwind utilities without touching component code */
+
+html[data-theme] .bg-white { background-color: var(--theme-surface) !important; }
+html[data-theme] .bg-gray-50 { background-color: var(--theme-bg) !important; }
+html[data-theme] .bg-gray-100 { background-color: var(--theme-surface2) !important; }
+html[data-theme] .bg-gray-200 { background-color: var(--theme-surface2) !important; }
+
+html[data-theme] .text-gray-900 { color: var(--theme-text1) !important; }
+html[data-theme] .text-gray-800 { color: var(--theme-text1) !important; }
+html[data-theme] .text-gray-700 { color: var(--theme-text1) !important; }
+html[data-theme] .text-gray-600 { color: var(--theme-text2) !important; }
+html[data-theme] .text-gray-500 { color: var(--theme-text2) !important; }
+html[data-theme] .text-gray-400 { color: var(--theme-text3) !important; }
+
+html[data-theme] .border-gray-100 { border-color: var(--theme-border) !important; }
+html[data-theme] .border-gray-200 { border-color: var(--theme-border) !important; }
+html[data-theme] .border-gray-300 { border-color: var(--theme-border) !important; }
+
+html[data-theme] .divide-gray-100 > * + * { border-color: var(--theme-border) !important; }
+
+html[data-theme] input:not([type="color"]),
+html[data-theme] select,
+html[data-theme] textarea {
+  background-color: var(--theme-input-bg) !important;
+  color: var(--theme-text1) !important;
+  border-color: var(--theme-border) !important;
+}
+
+html[data-theme] input::placeholder,
+html[data-theme] textarea::placeholder {
+  color: var(--theme-text3) !important;
+}
+
+html[data-theme] .hover\:bg-gray-50:hover { background-color: var(--theme-surface2) !important; }
+html[data-theme] .hover\:bg-gray-100:hover { background-color: var(--theme-surface2) !important; }
+
+/* Primary / accent color overrides */
+html[data-theme] .bg-primary-600 { background-color: var(--theme-accent) !important; }
+html[data-theme] .bg-primary-700 { background-color: var(--theme-accent-hover) !important; }
+html[data-theme] .hover\:bg-primary-700:hover { background-color: var(--theme-accent-hover) !important; }
+html[data-theme] .bg-primary-50 { background-color: var(--theme-accent-light) !important; }
+html[data-theme] .bg-primary-100 { background-color: var(--theme-accent-light) !important; }
+html[data-theme] .text-primary-600 { color: var(--theme-accent) !important; }
+html[data-theme] .text-primary-700 { color: var(--theme-accent) !important; }
+html[data-theme] .border-primary-500 { border-color: var(--theme-accent) !important; }
+html[data-theme] .ring-primary-500 { --tw-ring-color: var(--theme-accent) !important; }
+html[data-theme] .focus\:ring-primary-500:focus { --tw-ring-color: var(--theme-accent) !important; }
+html[data-theme] .focus\:border-primary-500:focus { border-color: var(--theme-accent) !important; }
+
+/* Income / expense */
+html[data-theme] .text-green-600 { color: var(--theme-income) !important; }
+html[data-theme] .bg-green-50 { background-color: var(--theme-income-light) !important; }
+html[data-theme] .text-green-700 { color: var(--theme-income) !important; }
+html[data-theme] .bg-green-100 { background-color: var(--theme-income-light) !important; }
+html[data-theme] .text-red-500 { color: var(--theme-expense) !important; }
+html[data-theme] .text-red-600 { color: var(--theme-expense) !important; }
+html[data-theme] .text-red-700 { color: var(--theme-expense) !important; }
+html[data-theme] .bg-red-50 { background-color: var(--theme-expense-light) !important; }
+
+/* Sidebar */
+html[data-theme] aside .bg-white,
+html[data-theme] aside { background-color: var(--theme-sidebar) !important; }
+
+/* Modal backdrop / overlay keep unchanged */
+
+/* Shadow softening for dark themes */
+html[data-theme="dark"] .shadow-sm,
+html[data-theme="dracula"] .shadow-sm,
+html[data-theme="nord"] .shadow-sm,
+html[data-theme="catppuccin"] .shadow-sm,
+html[data-theme="tokyo-night"] .shadow-sm,
+html[data-theme="rose-pine"] .shadow-sm,
+html[data-theme="monokai"] .shadow-sm,
+html[data-theme="solarized"] .shadow-sm {
+  box-shadow: 0 1px 2px 0 rgba(0,0,0,0.4) !important;
 }
 
 @layer utilities {
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
 }

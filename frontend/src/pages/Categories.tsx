@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { Plus, Pencil, Trash2, Tag } from "lucide-react";
+import {
+  Plus, Pencil, Trash2, Tag, Home, Car, Utensils, Heart,
+  BookOpen, Music, ShoppingCart, Briefcase, Gift, Plane, Dumbbell,
+  type LucideIcon,
+} from "lucide-react";
 import {
   useCategories,
   useCreateCategory,
@@ -15,7 +19,22 @@ import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Badge from "@/components/ui/Badge";
 
-const ICONS = ["tag", "home", "car", "utensils", "heart", "book", "music", "shopping-cart", "briefcase", "gift", "plane", "dumbbell"];
+const ICON_MAP: Record<string, LucideIcon> = {
+  tag: Tag,
+  home: Home,
+  car: Car,
+  utensils: Utensils,
+  heart: Heart,
+  book: BookOpen,
+  music: Music,
+  "shopping-cart": ShoppingCart,
+  briefcase: Briefcase,
+  gift: Gift,
+  plane: Plane,
+  dumbbell: Dumbbell,
+};
+
+const ICONS = Object.keys(ICON_MAP);
 
 interface FormData {
   name: string;
@@ -33,13 +52,14 @@ function CategoryCard({
   onEdit: (c: Category) => void;
   onDelete: (id: number) => void;
 }) {
+  const Icon = ICON_MAP[cat.icon] ?? Tag;
   return (
     <div className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-gray-200 bg-white transition-colors">
       <div
         className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
         style={{ backgroundColor: `${cat.color}20`, color: cat.color }}
       >
-        <Tag size={16} />
+        <Icon size={16} />
       </div>
       <div className="flex-1 min-w-0">
         <p className="font-medium text-gray-900 truncate">{cat.name}</p>
@@ -74,9 +94,10 @@ export default function Categories() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FormData>({
     defaultValues: { icon: "tag", color: "#6366f1" },
   });
+  const watchIcon = watch("icon");
 
   const openCreate = () => {
     setEditing(null);
@@ -112,19 +133,13 @@ export default function Categories() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Income */}
         <Card>
           <h2 className="text-sm font-semibold text-green-700 bg-green-50 px-3 py-1.5 rounded-lg inline-block mb-4">
             Receitas ({income.length})
           </h2>
           <div className="space-y-2">
             {income.map((cat) => (
-              <CategoryCard
-                key={cat.id}
-                cat={cat}
-                onEdit={openEdit}
-                onDelete={(id) => remove.mutate(id)}
-              />
+              <CategoryCard key={cat.id} cat={cat} onEdit={openEdit} onDelete={(id) => remove.mutate(id)} />
             ))}
             {income.length === 0 && (
               <p className="text-sm text-gray-400 text-center py-6">Nenhuma categoria de receita</p>
@@ -132,19 +147,13 @@ export default function Categories() {
           </div>
         </Card>
 
-        {/* Expense */}
         <Card>
           <h2 className="text-sm font-semibold text-red-700 bg-red-50 px-3 py-1.5 rounded-lg inline-block mb-4">
             Despesas ({expense.length})
           </h2>
           <div className="space-y-2">
             {expense.map((cat) => (
-              <CategoryCard
-                key={cat.id}
-                cat={cat}
-                onEdit={openEdit}
-                onDelete={(id) => remove.mutate(id)}
-              />
+              <CategoryCard key={cat.id} cat={cat} onEdit={openEdit} onDelete={(id) => remove.mutate(id)} />
             ))}
             {expense.length === 0 && (
               <p className="text-sm text-gray-400 text-center py-6">Nenhuma categoria de despesa</p>
@@ -165,20 +174,49 @@ export default function Categories() {
             error={errors.name?.message}
             {...register("name", { required: "Nome obrigatório" })}
           />
+
           <Select label="Tipo" error={errors.type?.message} {...register("type", { required: true })}>
             <option value="">Selecione...</option>
             <option value="income">Receita</option>
             <option value="expense">Despesa</option>
           </Select>
-          <Select label="Ícone" {...register("icon")}>
-            {ICONS.map((i) => (
-              <option key={i} value={i}>{i}</option>
-            ))}
-          </Select>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Ícone</label>
+            <div className="grid grid-cols-6 gap-2">
+              {ICONS.map((key) => {
+                const IconComp = ICON_MAP[key];
+                const isSelected = watchIcon === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setValue("icon", key, { shouldDirty: true })}
+                    className={`flex items-center justify-center h-10 rounded-lg border-2 transition-colors ${
+                      isSelected
+                        ? "border-primary-500 bg-primary-50"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <IconComp
+                      size={18}
+                      className={isSelected ? "text-primary-600" : "text-gray-500"}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Cor</label>
-            <input type="color" {...register("color")} className="h-9 w-full rounded-lg border border-gray-300 cursor-pointer" />
+            <input
+              type="color"
+              {...register("color")}
+              className="h-9 w-full rounded-lg border border-gray-300 cursor-pointer"
+            />
           </div>
+
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="secondary" className="flex-1" onClick={() => setModalOpen(false)}>
               Cancelar

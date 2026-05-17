@@ -24,6 +24,16 @@ class UserOut(BaseModel):
     created_at: datetime
 
 
+class UserUpdate(BaseModel):
+    name: str
+    email: EmailStr
+
+
+class UserChangePassword(BaseModel):
+    current_password: str
+    new_password: str
+
+
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"

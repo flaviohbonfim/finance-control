@@ -7,6 +7,7 @@ import {
   BarChart3,
   LogOut,
   TrendingUp,
+  Settings,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 
@@ -16,6 +17,7 @@ const links = [
   { to: "/accounts", icon: Wallet, label: "Contas" },
   { to: "/categories", icon: Tag, label: "Categorias" },
   { to: "/reports", icon: BarChart3, label: "Relatórios" },
+  { to: "/settings", icon: Settings, label: "Configurações" },
 ];
 
 interface SidebarProps {

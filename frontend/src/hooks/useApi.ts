@@ -23,6 +23,18 @@ export const useRegister = () =>
       api.post<AuthResponse>("/auth/register", data).then((r) => r.data),
   });
 
+export const useUpdateProfile = () =>
+  useMutation({
+    mutationFn: (data: { name: string; email: string }) =>
+      api.put<import("@/types").User>("/auth/me", data).then((r) => r.data),
+  });
+
+export const useChangePassword = () =>
+  useMutation({
+    mutationFn: (data: { current_password: string; new_password: string }) =>
+      api.put("/auth/me/password", data),
+  });
+
 // Accounts
 export const useAccounts = () =>
   useQuery({ queryKey: ["accounts"], queryFn: () => api.get<Account[]>("/accounts").then((r) => r.data) });

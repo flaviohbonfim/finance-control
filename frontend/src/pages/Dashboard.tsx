@@ -13,7 +13,7 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, type LucideIcon } from "lucide-react";
 import { useDashboard } from "@/hooks/useApi";
 import Card from "@/components/ui/Card";
 import type { Transaction } from "@/types";
@@ -30,27 +30,36 @@ function StatCard({
 }: {
   label: string;
   value: number;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: LucideIcon;
   color: string;
   trend?: "up" | "down";
 }) {
+  const bgStyle = {
+    backgroundColor: color === "text-primary-600"
+      ? "#eef2ff"
+      : color === "text-green-600"
+      ? "#dcfce7"
+      : "#fee2e2",
+  };
   return (
-    <Card>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm text-gray-500">{label}</p>
-          <p className={`text-2xl font-bold mt-1 ${color}`}>{fmt(value)}</p>
+    <Card className="overflow-hidden">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs sm:text-sm text-gray-500 truncate">{label}</p>
+          <p className={`text-base sm:text-2xl font-bold mt-1 leading-tight ${color}`}>
+            {fmt(value)}
+          </p>
         </div>
-        <div className={`p-2 rounded-lg ${color.replace("text-", "bg-").replace("600", "100")}`}>
-          <Icon size={20} className={color} />
+        <div className="p-2 rounded-lg flex-shrink-0" style={bgStyle}>
+          <Icon size={18} className={color} />
         </div>
       </div>
       {trend && (
-        <div className="mt-3 flex items-center gap-1 text-xs text-gray-500">
+        <div className="mt-2 flex items-center gap-1 text-xs text-gray-500">
           {trend === "up" ? (
-            <ArrowUpRight size={14} className="text-green-500" />
+            <ArrowUpRight size={13} className="text-green-500" />
           ) : (
-            <ArrowDownRight size={14} className="text-red-500" />
+            <ArrowDownRight size={13} className="text-red-500" />
           )}
           <span>Este mês</span>
         </div>
@@ -172,28 +181,49 @@ export default function Dashboard() {
         <Card>
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Despesas por Categoria</h2>
           {data.expense_by_category.length === 0 ? (
-            <div className="flex items-center justify-center h-[200px] text-sm text-gray-400">
+            <div className="flex items-center justify-center h-[160px] text-sm text-gray-500">
               Nenhuma despesa este mês
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie
-                  data={data.expense_by_category}
-                  dataKey="total"
-                  nameKey="category_name"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={80}
-                >
-                  {data.expense_by_category.map((entry, i) => (
-                    <Cell key={i} fill={entry.category_color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(v: number) => fmt(v)} />
-              </PieChart>
-            </ResponsiveContainer>
+            <>
+              <ResponsiveContainer width="100%" height={150}>
+                <PieChart>
+                  <Pie
+                    data={data.expense_by_category.map((e) => ({
+                      ...e,
+                      total: Number(e.total),
+                    }))}
+                    dataKey="total"
+                    nameKey="category_name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={40}
+                    outerRadius={65}
+                  >
+                    {data.expense_by_category.map((entry, i) => (
+                      <Cell key={i} fill={entry.category_color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v: number) => fmt(v)} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="mt-2 space-y-1.5">
+                {data.expense_by_category.map((e, i) => (
+                  <div key={i} className="flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: e.category_color }}
+                      />
+                      <span className="text-gray-600 truncate">{e.category_name}</span>
+                    </div>
+                    <span className="text-gray-900 font-medium flex-shrink-0">
+                      {e.percentage.toFixed(0)}% · {fmt(Number(e.total))}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </Card>
       </div>

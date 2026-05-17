@@ -106,7 +106,8 @@ async def dashboard(
             )
         )
 
-    # Expense by category (current month)
+    # Expense by category (current month) — LEFT JOIN from Transaction so
+    # expenses without a category also appear grouped as "Sem categoria"
     cat_result = await db.execute(
         select(
             Category.id,
@@ -114,7 +115,8 @@ async def dashboard(
             Category.color,
             func.sum(Transaction.amount).label("total"),
         )
-        .join(Transaction, Transaction.category_id == Category.id, isouter=True)
+        .select_from(Transaction)
+        .join(Category, Transaction.category_id == Category.id, isouter=True)
         .where(
             Transaction.user_id == current_user.id,
             Transaction.type == TransactionType.expense,
@@ -125,14 +127,14 @@ async def dashboard(
     )
     cat_rows = cat_result.all()
 
-    total_exp = sum(r.total for r in cat_rows) or Decimal("1")
+    total_exp = sum(Decimal(str(r.total)) for r in cat_rows) or Decimal("1")
     expense_by_category = [
         CategorySummary(
             category_id=r.id,
-            category_name=r.name,
-            category_color=r.color,
+            category_name=r.name or "Sem categoria",
+            category_color=r.color or "#9ca3af",
             total=Decimal(str(r.total)),
-            percentage=float(Decimal(str(r.total)) / Decimal(str(total_exp)) * 100),
+            percentage=float(Decimal(str(r.total)) / total_exp * 100),
         )
         for r in cat_rows
     ]
