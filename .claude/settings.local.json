@@ -5,7 +5,8 @@
       "Bash(mkdir -p frontend backend .github/workflows deploy)",
       "Bash(git branch *)",
       "Bash(pip install *)",
-      "Bash(python3 -m ruff check .)"
+      "Bash(python3 -m ruff check .)",
+      "Bash(python3 *)"
     ]
   }
 }

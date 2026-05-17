@@ -49,9 +49,7 @@ async def list_transactions(
     if date_to:
         query = query.where(Transaction.transaction_date <= date_to)
 
-    count_result = await db.execute(
-        select(func.count()).select_from(query.subquery())
-    )
+    count_result = await db.execute(select(func.count()).select_from(query.subquery()))
     total = count_result.scalar()
 
     query = query.order_by(Transaction.transaction_date.desc(), Transaction.id.desc())
@@ -110,9 +108,7 @@ async def update_transaction(
     if not transaction:
         raise HTTPException(status_code=404, detail="Transação não encontrada")
 
-    acc_result = await db.execute(
-        select(Account).where(Account.id == transaction.account_id)
-    )
+    acc_result = await db.execute(select(Account).where(Account.id == transaction.account_id))
     account = acc_result.scalar_one()
 
     # Reverse old balance effect
