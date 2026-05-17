@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
   ArrowLeftRight,
+  RefreshCcw,
   Tag,
   Wallet,
   BarChart3,
@@ -14,6 +15,7 @@ import { useAuthStore } from "@/store/auth";
 const links = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/transactions", icon: ArrowLeftRight, label: "Transações" },
+  { to: "/recurring", icon: RefreshCcw, label: "Recorrentes" },
   { to: "/accounts", icon: Wallet, label: "Contas" },
   { to: "/categories", icon: Tag, label: "Categorias" },
   { to: "/reports", icon: BarChart3, label: "Relatórios" },

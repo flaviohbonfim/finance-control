@@ -11,6 +11,7 @@ from app.core.database import Base
 if TYPE_CHECKING:
     from app.models.account import Account
     from app.models.category import Category
+    from app.models.recurring_transaction import RecurringTransaction
     from app.models.transaction import Transaction
 
 
@@ -26,6 +27,9 @@ class User(Base):
 
     accounts: Mapped[list[Account]] = relationship(back_populates="user", cascade="all, delete")
     categories: Mapped[list[Category]] = relationship(back_populates="user", cascade="all, delete")
+    recurring_transactions: Mapped[list[RecurringTransaction]] = relationship(
+        back_populates="user", cascade="all, delete"
+    )
     transactions: Mapped[list[Transaction]] = relationship(
         back_populates="user", cascade="all, delete"
     )

@@ -8,6 +8,7 @@ import Register from "@/pages/Register";
 import Dashboard from "@/pages/Dashboard";
 import Accounts from "@/pages/Accounts";
 import Categories from "@/pages/Categories";
+import Recorrentes from "@/pages/Recorrentes";
 import Transactions from "@/pages/Transactions";
 import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
@@ -40,6 +41,7 @@ export default function App() {
         >
           <Route index element={<Dashboard />} />
           <Route path="transactions" element={<Transactions />} />
+          <Route path="recurring" element={<Recorrentes />} />
           <Route path="accounts" element={<Accounts />} />
           <Route path="categories" element={<Categories />} />
           <Route path="reports" element={<Reports />} />

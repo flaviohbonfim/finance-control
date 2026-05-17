@@ -2,6 +2,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel
 
+from app.schemas.recurring_transaction import RecurringOut
+
 
 class MonthlySummary(BaseModel):
     month: str
@@ -26,3 +28,4 @@ class DashboardSummary(BaseModel):
     recent_transactions: list
     monthly_chart: list[MonthlySummary]
     expense_by_category: list[CategorySummary]
+    recurring_this_month: list[RecurringOut]

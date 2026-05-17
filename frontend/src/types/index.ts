@@ -20,7 +20,20 @@ export interface Account {
   type: AccountType;
   balance: number;
   color: string;
+  closing_day: number | null;
+  due_day: number | null;
+  credit_limit: number | null;
   created_at: string;
+}
+
+export interface InvoiceData {
+  current_total: number;
+  current_start: string;
+  current_end: string;
+  next_total: number;
+  next_start: string;
+  next_end: string;
+  due_day: number;
 }
 
 export type CategoryType = "income" | "expense";
@@ -80,4 +93,29 @@ export interface DashboardSummary {
   recent_transactions: Transaction[];
   monthly_chart: MonthlySummary[];
   expense_by_category: CategorySummary[];
+  recurring_this_month: RecurringTransaction[];
+}
+
+export type RecurringFrequency = "monthly" | "yearly";
+
+export interface RecurringTransaction {
+  id: number;
+  account_id: number;
+  category_id: number | null;
+  type: TransactionType;
+  description: string;
+  amount: number | null;
+  is_fixed: boolean;
+  frequency: RecurringFrequency;
+  due_day: number;
+  due_month: number | null;
+  start_date: string;
+  end_date: string | null;
+  active: boolean;
+  last_launched_date: string | null;
+  launched_this_month: boolean;
+  account_name?: string;
+  category_name?: string;
+  category_color?: string;
+  created_at: string;
 }

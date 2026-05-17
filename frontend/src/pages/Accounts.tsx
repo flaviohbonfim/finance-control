@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { Plus, Pencil, Trash2, Wallet } from "lucide-react";
+import { Plus, Pencil, Trash2, Wallet, CreditCard, Receipt } from "lucide-react";
 import {
   useAccounts,
   useCreateAccount,
   useUpdateAccount,
   useDeleteAccount,
+  useAccountInvoice,
+  usePayInvoice,
 } from "@/hooks/useApi";
 import type { Account, AccountType } from "@/types";
 import Card from "@/components/ui/Card";
@@ -16,6 +18,11 @@ import Select from "@/components/ui/Select";
 
 const fmt = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+
+const fmtDate = (s: string) => {
+  const [y, m, d] = s.split("-");
+  return `${d}/${m}/${y}`;
+};
 
 const accountTypeLabels: Record<AccountType, string> = {
   checking: "Conta Corrente",
@@ -30,6 +37,119 @@ interface FormData {
   type: AccountType;
   balance: number;
   color: string;
+  closing_day: number | null;
+  due_day: number | null;
+  credit_limit: number | null;
+}
+
+interface PayFormData {
+  source_account_id: number;
+  amount: number;
+}
+
+function InvoiceCard({ account }: { account: Account }) {
+  const { data: invoice, isLoading } = useAccountInvoice(
+    account.type === "credit_card" && account.closing_day ? account.id : null
+  );
+  const payInvoice = usePayInvoice();
+  const { data: accounts = [] } = useAccounts();
+  const [payModalOpen, setPayModalOpen] = useState(false);
+  const [error, setError] = useState("");
+
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<PayFormData>();
+
+  const openPay = () => {
+    reset({ amount: invoice ? Number(invoice.current_total) : 0 });
+    setError("");
+    setPayModalOpen(true);
+  };
+
+  const onPay = async (data: PayFormData) => {
+    try {
+      await payInvoice.mutateAsync({
+        accountId: account.id,
+        source_account_id: Number(data.source_account_id),
+        amount: Number(data.amount),
+      });
+      setPayModalOpen(false);
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setError(msg || "Erro ao pagar fatura");
+    }
+  };
+
+  if (!account.closing_day) return null;
+  if (isLoading) return <p className="text-xs text-gray-400 mt-2">Carregando fatura...</p>;
+  if (!invoice) return null;
+
+  const debitAccounts = accounts.filter((a) => a.id !== account.id && a.type !== "credit_card");
+
+  return (
+    <>
+      <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-gray-500">Fatura atual</span>
+          <span className="text-xs text-gray-400">
+            {fmtDate(invoice.current_start)} – {fmtDate(invoice.current_end)}
+          </span>
+        </div>
+        <p className="text-lg font-bold text-red-500">{fmt(Number(invoice.current_total))}</p>
+
+        <div className="flex items-center justify-between text-xs mt-1">
+          <span className="text-gray-500">Próxima fatura</span>
+          <span className="text-xs text-gray-400">
+            {fmtDate(invoice.next_start)} – {fmtDate(invoice.next_end)}
+          </span>
+        </div>
+        <p className="text-sm font-semibold text-gray-600">{fmt(Number(invoice.next_total))}</p>
+
+        <p className="text-xs text-gray-400">Vencimento dia {invoice.due_day}</p>
+
+        <Button size="sm" variant="secondary" onClick={openPay} className="w-full mt-1">
+          <Receipt size={14} /> Pagar Fatura
+        </Button>
+      </div>
+
+      <Modal open={payModalOpen} onClose={() => setPayModalOpen(false)} title="Pagar Fatura">
+        <form onSubmit={handleSubmit(onPay)} className="space-y-4">
+          <Select
+            label="Conta de débito"
+            error={errors.source_account_id?.message}
+            {...register("source_account_id", { required: "Selecione uma conta" })}
+          >
+            <option value="">Selecione...</option>
+            {debitAccounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </Select>
+          <Input
+            label="Valor (R$)"
+            type="number"
+            step="0.01"
+            min="0.01"
+            error={errors.amount?.message}
+            {...register("amount", { required: "Valor obrigatório", min: 0.01 })}
+          />
+          {error && <p className="text-sm text-red-500">{error}</p>}
+          <div className="flex gap-3 pt-2">
+            <Button
+              type="button"
+              variant="secondary"
+              className="flex-1"
+              onClick={() => setPayModalOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" className="flex-1" loading={payInvoice.isPending}>
+              Confirmar Pagamento
+            </Button>
+          </div>
+        </form>
+      </Modal>
+    </>
+  );
 }
 
 export default function Accounts() {
@@ -40,30 +160,60 @@ export default function Accounts() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Account | null>(null);
+  const [submitError, setSubmitError] = useState("");
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { errors },
+  } = useForm<FormData>({
     defaultValues: { color: "#6366f1", balance: 0 },
   });
 
+  const watchType = watch("type");
+
   const openCreate = () => {
     setEditing(null);
-    reset({ color: "#6366f1", balance: 0 });
+    reset({ color: "#6366f1", balance: 0, closing_day: null, due_day: null, credit_limit: null });
+    setSubmitError("");
     setModalOpen(true);
   };
 
   const openEdit = (acc: Account) => {
     setEditing(acc);
-    reset({ name: acc.name, type: acc.type, color: acc.color, balance: acc.balance });
+    reset({
+      name: acc.name,
+      type: acc.type,
+      color: acc.color,
+      balance: acc.balance,
+      closing_day: acc.closing_day ?? null,
+      due_day: acc.due_day ?? null,
+      credit_limit: acc.credit_limit ?? null,
+    });
+    setSubmitError("");
     setModalOpen(true);
   };
 
   const onSubmit = async (data: FormData) => {
-    if (editing) {
-      await update.mutateAsync({ id: editing.id, ...data });
-    } else {
-      await create.mutateAsync(data);
+    try {
+      const payload = {
+        ...data,
+        closing_day: data.closing_day ? Number(data.closing_day) : null,
+        due_day: data.due_day ? Number(data.due_day) : null,
+        credit_limit: data.credit_limit ? Number(data.credit_limit) : null,
+      };
+      if (editing) {
+        await update.mutateAsync({ id: editing.id, ...payload });
+      } else {
+        await create.mutateAsync(payload as Parameters<typeof create.mutateAsync>[0]);
+      }
+      setModalOpen(false);
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setSubmitError(msg || "Erro ao salvar conta");
     }
-    setModalOpen(false);
   };
 
   const totalBalance = accounts.reduce((s, a) => s + Number(a.balance), 0);
@@ -89,7 +239,11 @@ export default function Accounts() {
                   className="w-10 h-10 rounded-xl flex items-center justify-center"
                   style={{ backgroundColor: `${acc.color}20` }}
                 >
-                  <Wallet size={20} style={{ color: acc.color }} />
+                  {acc.type === "credit_card" ? (
+                    <CreditCard size={20} style={{ color: acc.color }} />
+                  ) : (
+                    <Wallet size={20} style={{ color: acc.color }} />
+                  )}
                 </div>
                 <div>
                   <p className="font-semibold text-gray-900">{acc.name}</p>
@@ -118,6 +272,7 @@ export default function Accounts() {
             >
               {fmt(Number(acc.balance))}
             </p>
+            {acc.type === "credit_card" && <InvoiceCard account={acc} />}
           </Card>
         ))}
 
@@ -144,10 +299,16 @@ export default function Accounts() {
             error={errors.name?.message}
             {...register("name", { required: "Nome obrigatório" })}
           />
-          <Select label="Tipo" error={errors.type?.message} {...register("type", { required: true })}>
+          <Select
+            label="Tipo"
+            error={errors.type?.message}
+            {...register("type", { required: true })}
+          >
             <option value="">Selecione...</option>
             {Object.entries(accountTypeLabels).map(([v, l]) => (
-              <option key={v} value={v}>{l}</option>
+              <option key={v} value={v}>
+                {l}
+              </option>
             ))}
           </Select>
           {!editing && (
@@ -159,15 +320,59 @@ export default function Accounts() {
               {...register("balance", { valueAsNumber: true })}
             />
           )}
+          {watchType === "credit_card" && (
+            <>
+              <Input
+                label="Dia de fechamento"
+                type="number"
+                min="1"
+                max="31"
+                placeholder="Ex: 10"
+                error={errors.closing_day?.message}
+                {...register("closing_day", { valueAsNumber: true })}
+              />
+              <Input
+                label="Dia de vencimento"
+                type="number"
+                min="1"
+                max="31"
+                placeholder="Ex: 20"
+                error={errors.due_day?.message}
+                {...register("due_day", { valueAsNumber: true })}
+              />
+              <Input
+                label="Limite de crédito (opcional)"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0,00"
+                {...register("credit_limit", { valueAsNumber: true })}
+              />
+            </>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Cor</label>
-            <input type="color" {...register("color")} className="h-9 w-full rounded-lg border border-gray-300 cursor-pointer" />
+            <input
+              type="color"
+              {...register("color")}
+              className="h-9 w-full rounded-lg border border-gray-300 cursor-pointer"
+            />
           </div>
+          {submitError && <p className="text-sm text-red-500">{submitError}</p>}
           <div className="flex gap-3 pt-2">
-            <Button type="button" variant="secondary" className="flex-1" onClick={() => setModalOpen(false)}>
+            <Button
+              type="button"
+              variant="secondary"
+              className="flex-1"
+              onClick={() => setModalOpen(false)}
+            >
               Cancelar
             </Button>
-            <Button type="submit" className="flex-1" loading={create.isPending || update.isPending}>
+            <Button
+              type="submit"
+              className="flex-1"
+              loading={create.isPending || update.isPending}
+            >
               {editing ? "Salvar" : "Criar"}
             </Button>
           </div>

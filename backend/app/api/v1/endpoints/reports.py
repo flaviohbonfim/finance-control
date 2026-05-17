@@ -10,8 +10,10 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models.account import Account
 from app.models.category import Category
+from app.models.recurring_transaction import RecurringFrequency, RecurringTransaction
 from app.models.transaction import Transaction, TransactionType
 from app.models.user import User
+from app.schemas.recurring_transaction import RecurringOut
 from app.schemas.report import CategorySummary, DashboardSummary, MonthlySummary
 from app.schemas.transaction import TransactionOut
 
@@ -139,6 +141,64 @@ async def dashboard(
         for r in cat_rows
     ]
 
+    # Recurring transactions due this month
+    recurring_result = await db.execute(
+        select(RecurringTransaction)
+        .where(
+            RecurringTransaction.user_id == current_user.id,
+            RecurringTransaction.active.is_(True),
+            RecurringTransaction.start_date <= today,
+        )
+        .options(
+            selectinload(RecurringTransaction.account),
+            selectinload(RecurringTransaction.category),
+        )
+        .order_by(RecurringTransaction.due_day)
+    )
+    all_recurring = recurring_result.scalars().all()
+
+    recurring_this_month: list[RecurringOut] = []
+    for rt in all_recurring:
+        if rt.end_date is not None and rt.end_date < month_start:
+            continue
+        if rt.frequency == RecurringFrequency.monthly:
+            due_this_month = True
+        else:
+            # yearly: check if due_month matches current month
+            due_this_month = rt.due_month == today.month
+
+        if not due_this_month:
+            continue
+
+        launched = (
+            rt.last_launched_date is not None
+            and rt.last_launched_date.year == today.year
+            and rt.last_launched_date.month == today.month
+        )
+        recurring_this_month.append(
+            RecurringOut(
+                id=rt.id,
+                account_id=rt.account_id,
+                category_id=rt.category_id,
+                type=rt.type,
+                description=rt.description,
+                amount=rt.amount,
+                is_fixed=rt.is_fixed,
+                frequency=rt.frequency,
+                due_day=rt.due_day,
+                due_month=rt.due_month,
+                start_date=rt.start_date,
+                end_date=rt.end_date,
+                active=rt.active,
+                last_launched_date=rt.last_launched_date,
+                created_at=rt.created_at,
+                account_name=rt.account.name if rt.account else None,
+                category_name=rt.category.name if rt.category else None,
+                category_color=rt.category.color if rt.category else None,
+                launched_this_month=launched,
+            )
+        )
+
     return DashboardSummary(
         total_balance=Decimal(str(total_balance)),
         monthly_income=Decimal(str(monthly_income)),
@@ -147,6 +207,7 @@ async def dashboard(
         recent_transactions=[TransactionOut.model_validate(t) for t in recent],
         monthly_chart=monthly_chart,
         expense_by_category=expense_by_category,
+        recurring_this_month=recurring_this_month,
     )
 
 

@@ -13,10 +13,25 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, type LucideIcon } from "lucide-react";
-import { useDashboard } from "@/hooks/useApi";
+import {
+  TrendingUp,
+  TrendingDown,
+  Wallet,
+  ArrowUpRight,
+  ArrowDownRight,
+  RefreshCcw,
+  CheckCircle,
+  Play,
+  type LucideIcon,
+} from "lucide-react";
+import { useDashboard, useLaunchRecurring } from "@/hooks/useApi";
 import Card from "@/components/ui/Card";
-import type { Transaction } from "@/types";
+import Button from "@/components/ui/Button";
+import Modal from "@/components/ui/Modal";
+import Input from "@/components/ui/Input";
+import { useForm } from "react-hook-form";
+import { useState } from "react";
+import type { Transaction, RecurringTransaction } from "@/types";
 
 const fmt = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
@@ -100,6 +115,157 @@ const monthLabel = (m: string) => {
   const [, month] = m.split("-");
   return ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"][parseInt(month) - 1];
 };
+
+function RecurringWidget({ items }: { items: RecurringTransaction[] }) {
+  const launch = useLaunchRecurring();
+  const [launchModalOpen, setLaunchModalOpen] = useState(false);
+  const [launching, setLaunching] = useState<RecurringTransaction | null>(null);
+  const [launchError, setLaunchError] = useState("");
+  const [launchSuccess, setLaunchSuccess] = useState(false);
+
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<{ amount: number }>();
+
+  const openLaunch = (rt: RecurringTransaction) => {
+    setLaunching(rt);
+    reset({ amount: rt.amount ? Number(rt.amount) : undefined });
+    setLaunchError("");
+    setLaunchSuccess(false);
+    setLaunchModalOpen(true);
+  };
+
+  const onLaunch = async (data: { amount: number }) => {
+    if (!launching) return;
+    try {
+      await launch.mutateAsync({
+        id: launching.id,
+        amount: launching.is_fixed
+          ? (launching.amount ? Number(launching.amount) : undefined)
+          : Number(data.amount),
+      });
+      setLaunchSuccess(true);
+      setTimeout(() => {
+        setLaunchModalOpen(false);
+        setLaunchSuccess(false);
+      }, 1500);
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setLaunchError(msg || "Erro ao lançar");
+    }
+  };
+
+  if (items.length === 0) return null;
+
+  return (
+    <>
+      <Card>
+        <h2 className="text-sm font-semibold text-gray-900 mb-4">Recorrentes do Mês</h2>
+        <div className="space-y-2">
+          {items.map((rt) => (
+            <div
+              key={rt.id}
+              className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0"
+            >
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{
+                  backgroundColor: rt.category_color ? `${rt.category_color}20` : "#6366f120",
+                  color: rt.category_color || "#6366f1",
+                }}
+              >
+                <RefreshCcw size={14} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">{rt.description}</p>
+                <p className="text-xs text-gray-500">
+                  {rt.account_name} · dia {rt.due_day}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {rt.amount !== null && (
+                  <span
+                    className={`text-sm font-semibold ${
+                      rt.type === "income" ? "text-green-600" : "text-red-500"
+                    }`}
+                  >
+                    {rt.type === "income" ? "+" : "-"}
+                    {fmt(Number(rt.amount))}
+                  </span>
+                )}
+                {rt.launched_this_month ? (
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+                    <CheckCircle size={11} /> Lançado
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => openLaunch(rt)}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors"
+                    title="Lançar"
+                  >
+                    <Play size={13} />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Modal
+        open={launchModalOpen}
+        onClose={() => setLaunchModalOpen(false)}
+        title="Lançar Recorrente"
+      >
+        {launchSuccess ? (
+          <div className="flex flex-col items-center gap-3 py-6">
+            <CheckCircle size={40} className="text-green-500" />
+            <p className="text-sm font-medium text-gray-700">Lançado com sucesso!</p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit(onLaunch)} className="space-y-4">
+            {launching && (
+              <div className="bg-gray-50 rounded-lg px-4 py-3 text-sm text-gray-700">
+                <p className="font-medium">{launching.description}</p>
+                <p className="text-gray-500 mt-0.5">
+                  {launching.type === "income" ? "Receita" : "Despesa"} · {launching.account_name}
+                </p>
+              </div>
+            )}
+            {launching && !launching.is_fixed && (
+              <Input
+                label="Valor (R$)"
+                type="number"
+                step="0.01"
+                min="0.01"
+                placeholder="0,00"
+                error={errors.amount?.message}
+                {...register("amount", { required: "Valor obrigatório", min: 0.01 })}
+              />
+            )}
+            {launching && launching.is_fixed && launching.amount && (
+              <p className="text-sm text-gray-600">
+                Valor: <span className="font-semibold">{fmt(Number(launching.amount))}</span>
+              </p>
+            )}
+            {launchError && <p className="text-sm text-red-500">{launchError}</p>}
+            <div className="flex gap-3 pt-2">
+              <Button
+                type="button"
+                variant="secondary"
+                className="flex-1"
+                onClick={() => setLaunchModalOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" className="flex-1" loading={launch.isPending}>
+                Confirmar
+              </Button>
+            </div>
+          </form>
+        )}
+      </Modal>
+    </>
+  );
+}
 
 export default function Dashboard() {
   const { data, isLoading } = useDashboard();
@@ -241,6 +407,9 @@ export default function Dashboard() {
           </div>
         )}
       </Card>
+
+      {/* Recurring this month */}
+      <RecurringWidget items={data.recurring_this_month ?? []} />
     </div>
   );
 }
