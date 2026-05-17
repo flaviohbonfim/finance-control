@@ -34,7 +34,11 @@ jobs:
           PATCH=$(echo $LATEST | cut -d. -f3)
 
           # Determine bump type from commit messages since last tag
-          COMMITS=$(git log ${LATEST}..HEAD --pretty=format:"%s")
+          if git rev-parse "$LATEST" >/dev/null 2>&1; then
+            COMMITS=$(git log ${LATEST}..HEAD --pretty=format:"%s")
+          else
+            COMMITS=$(git log HEAD --pretty=format:"%s")
+          fi
           if echo "$COMMITS" | grep -qE '^(feat!|fix!|BREAKING CHANGE)'; then
             MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0
           elif echo "$COMMITS" | grep -qE '^feat'; then
@@ -57,7 +61,11 @@ jobs:
             echo 'notes<<EOF'
             echo "## What's Changed in ${{ steps.version.outputs.tag }}"
             echo ""
-            git log ${LATEST}..HEAD --pretty=format:"- %s (%h)" --reverse
+            if git rev-parse "$LATEST" >/dev/null 2>&1; then
+              git log ${LATEST}..HEAD --pretty=format:"- %s (%h)" --reverse
+            else
+              git log HEAD --pretty=format:"- %s (%h)" --reverse
+            fi
             echo ""
             echo "EOF"
           } >> $GITHUB_OUTPUT
