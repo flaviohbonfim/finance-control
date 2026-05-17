@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 from datetime import date, datetime
 from decimal import Decimal
-from enum import Enum
+from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Date, DateTime, ForeignKey, Numeric, String, Text, func
 from sqlalchemy import Enum as SAEnum
@@ -8,8 +11,13 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 
+if TYPE_CHECKING:
+    from app.models.account import Account
+    from app.models.category import Category
+    from app.models.user import User
 
-class TransactionType(str, Enum):
+
+class TransactionType(StrEnum):
     income = "income"
     expense = "expense"
 
@@ -28,6 +36,6 @@ class Transaction(Base):
     transaction_date: Mapped[date] = mapped_column(Date, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
-    user: Mapped["User"] = relationship(back_populates="transactions")
-    account: Mapped["Account"] = relationship(back_populates="transactions")
-    category: Mapped["Category | None"] = relationship(back_populates="transactions")
+    user: Mapped[User] = relationship(back_populates="transactions")
+    account: Mapped[Account] = relationship(back_populates="transactions")
+    category: Mapped[Category | None] = relationship(back_populates="transactions")

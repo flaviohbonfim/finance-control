@@ -59,7 +59,9 @@ def upgrade() -> None:
         "transactions",
         sa.Column("id", sa.Integer(), primary_key=True, index=True),
         sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False, index=True),
-        sa.Column("account_id", sa.Integer(), sa.ForeignKey("accounts.id"), nullable=False, index=True),
+        sa.Column(
+            "account_id", sa.Integer(), sa.ForeignKey("accounts.id"), nullable=False, index=True
+        ),
         sa.Column("category_id", sa.Integer(), sa.ForeignKey("categories.id"), nullable=True),
         sa.Column(
             "type",

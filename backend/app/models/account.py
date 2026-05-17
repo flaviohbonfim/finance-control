@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 from datetime import datetime
 from decimal import Decimal
-from enum import Enum
+from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, Numeric, String, func
 from sqlalchemy import Enum as SAEnum
@@ -8,8 +11,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 
+if TYPE_CHECKING:
+    from app.models.transaction import Transaction
+    from app.models.user import User
 
-class AccountType(str, Enum):
+
+class AccountType(StrEnum):
     checking = "checking"
     savings = "savings"
     cash = "cash"
@@ -28,5 +35,5 @@ class Account(Base):
     color: Mapped[str] = mapped_column(String(7), default="#6366f1")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
-    user: Mapped["User"] = relationship(back_populates="accounts")
-    transactions: Mapped[list["Transaction"]] = relationship(back_populates="account")
+    user: Mapped[User] = relationship(back_populates="accounts")
+    transactions: Mapped[list[Transaction]] = relationship(back_populates="account")
