@@ -1,0 +1,16 @@
+services:
+  backend:
+    image: ghcr.io/${GITHUB_REPOSITORY}/backend:${RELEASE_TAG}
+    container_name: finance_backend
+    restart: always
+    env_file: .env.prod
+    ports:
+      - "8000:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+
+  frontend:
+    image: ghcr.io/${GITHUB_REPOSITORY}/frontend:${RELEASE_TAG}
+    container_name: finance_frontend
+    restart: always
+    ports:
+      - "3000:80"

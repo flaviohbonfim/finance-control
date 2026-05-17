@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git init *)",
+      "Bash(mkdir -p frontend backend .github/workflows deploy)",
+      "Bash(git branch *)"
+    ]
+  }
+}
