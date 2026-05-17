@@ -1,5 +1,6 @@
-# Build stage
-FROM node:20-alpine AS builder
+# Build stage — always runs on the native runner arch (amd64) regardless of target platform.
+# Static files produced by Vite are platform-agnostic, so this is safe.
+FROM --platform=$BUILDPLATFORM node:20-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
