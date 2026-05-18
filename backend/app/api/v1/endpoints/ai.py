@@ -1,3 +1,4 @@
+import asyncio
 import json
 import re
 
@@ -70,7 +71,9 @@ Se uma transação não se encaixar em nenhuma categoria, omita-a do resultado."
 
         genai.configure(api_key=settings.GEMINI_API_KEY)
         model = genai.GenerativeModel("gemini-1.5-flash")
-        response = model.generate_content(prompt)
+
+        # Executa em thread para não bloquear o event loop
+        response = await asyncio.to_thread(model.generate_content, prompt)
         raw = response.text.strip()
 
         # Extrai JSON mesmo se vier com markdown
@@ -78,6 +81,8 @@ Se uma transação não se encaixar em nenhuma categoria, omita-a do resultado."
         if not match:
             raise ValueError("Resposta não contém JSON válido")
         suggestions = json.loads(match.group())
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Erro ao chamar Gemini: {e}") from e
 
