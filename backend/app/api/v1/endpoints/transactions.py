@@ -1,4 +1,7 @@
+import calendar
 import math
+from datetime import date
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
@@ -18,6 +21,14 @@ from app.schemas.transaction import (
 )
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
+
+
+def _add_months(d: date, months: int) -> date:
+    month = d.month - 1 + months
+    year = d.year + month // 12
+    month = month % 12 + 1
+    day = min(d.day, calendar.monthrange(year, month)[1])
+    return date(year, month, day)
 
 
 @router.get("", response_model=PaginatedTransactions)
@@ -78,18 +89,50 @@ async def create_transaction(
     if not account:
         raise HTTPException(status_code=404, detail="Conta não encontrada")
 
-    transaction = Transaction(user_id=current_user.id, **payload.model_dump())
-    db.add(transaction)
+    n = max(1, payload.installments)
+    base = payload.model_dump(exclude={"installments"})
 
-    if payload.type == TransactionType.income:
-        account.balance += payload.amount
-    else:
-        account.balance -= payload.amount
+    if n == 1:
+        transaction = Transaction(user_id=current_user.id, **base)
+        db.add(transaction)
+        if payload.type == TransactionType.income:
+            account.balance += payload.amount
+        else:
+            account.balance -= payload.amount
+        await db.commit()
+        await db.refresh(transaction)
+        await db.refresh(transaction, ["category"])
+        return transaction
+
+    # Installments: split amount across N months
+    unit = (payload.amount / n).quantize(Decimal("0.01"))
+    last = payload.amount - unit * (n - 1)
+
+    first_tx = None
+    for i in range(n):
+        amount = last if i == n - 1 else unit
+        tx = Transaction(
+            user_id=current_user.id,
+            account_id=payload.account_id,
+            category_id=payload.category_id,
+            type=payload.type,
+            amount=amount,
+            description=f"{payload.description} ({i + 1}/{n})",
+            notes=payload.notes,
+            transaction_date=_add_months(payload.transaction_date, i),
+        )
+        db.add(tx)
+        if payload.type == TransactionType.income:
+            account.balance += amount
+        else:
+            account.balance -= amount
+        if i == 0:
+            first_tx = tx
 
     await db.commit()
-    await db.refresh(transaction)
-    await db.refresh(transaction, ["category"])
-    return transaction
+    await db.refresh(first_tx)
+    await db.refresh(first_tx, ["category"])
+    return first_tx
 
 
 @router.put("/{transaction_id}", response_model=TransactionOut)

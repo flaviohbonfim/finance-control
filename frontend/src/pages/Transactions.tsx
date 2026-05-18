@@ -30,6 +30,7 @@ interface FormData {
   description: string;
   notes: string;
   transaction_date: string;
+  installments: number;
 }
 
 export default function Transactions() {
@@ -56,14 +57,17 @@ export default function Transactions() {
   const remove = useDeleteTransaction();
 
   const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<FormData>({
-    defaultValues: { transaction_date: new Date().toISOString().slice(0, 10) },
+    defaultValues: { transaction_date: new Date().toISOString().slice(0, 10), installments: 1 },
   });
 
   const txType = watch("type");
+  const watchAccountId = watch("account_id");
+  const selectedAccount = accounts.find((a) => a.id === Number(watchAccountId));
+  const showInstallments = !editing && txType === "expense" && selectedAccount?.type === "credit_card";
 
   const openCreate = () => {
     setEditing(null);
-    reset({ transaction_date: new Date().toISOString().slice(0, 10), category_id: null });
+    reset({ transaction_date: new Date().toISOString().slice(0, 10), category_id: null, installments: 1 });
     setModalOpen(true);
   };
 
@@ -82,16 +86,17 @@ export default function Transactions() {
   };
 
   const onSubmit = async (data: FormData) => {
-    const payload = {
-      ...data,
+    const { installments, ...rest } = data;
+    const base = {
+      ...rest,
       amount: Number(data.amount),
       category_id: data.category_id ? Number(data.category_id) : null,
       account_id: Number(data.account_id),
     };
     if (editing) {
-      await update.mutateAsync({ id: editing.id, ...payload });
+      await update.mutateAsync({ id: editing.id, ...base });
     } else {
-      await create.mutateAsync(payload);
+      await create.mutateAsync({ ...base, installments: installments || 1 });
     }
     setModalOpen(false);
   };
@@ -299,6 +304,16 @@ export default function Transactions() {
             error={errors.amount?.message}
             {...register("amount", { required: "Valor obrigatório", min: 0.01 })}
           />
+          {showInstallments && (
+            <Input
+              label="Parcelas"
+              type="number"
+              min="1"
+              max="48"
+              placeholder="1"
+              {...register("installments", { valueAsNumber: true, min: 1, max: 48 })}
+            />
+          )}
           <Input
             label="Data"
             type="date"

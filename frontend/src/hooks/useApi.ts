@@ -120,7 +120,7 @@ export const useTransactions = (params: {
 export const useCreateTransaction = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: Omit<Transaction, "id" | "created_at" | "category">) =>
+    mutationFn: (data: Omit<Transaction, "id" | "created_at" | "category"> & { installments?: number }) =>
       api.post<Transaction>("/transactions", data).then((r) => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["transactions"] });

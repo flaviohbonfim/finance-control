@@ -15,6 +15,7 @@ class TransactionCreate(BaseModel):
     description: str
     notes: str | None = None
     transaction_date: date
+    installments: int = 1
 
 
 class TransactionUpdate(BaseModel):
