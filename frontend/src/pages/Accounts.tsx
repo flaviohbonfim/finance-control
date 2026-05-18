@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { Plus, Pencil, Trash2, Wallet, CreditCard, Receipt } from "lucide-react";
+import { Plus, Pencil, Trash2, Wallet, CreditCard, Receipt, ChevronDown, ChevronUp } from "lucide-react";
 import {
   useAccounts,
   useCreateAccount,
@@ -47,6 +47,21 @@ interface PayFormData {
   amount: number;
 }
 
+function TransactionList({ transactions }: { transactions: { id: number; description: string; amount: number; transaction_date: string }[] }) {
+  if (transactions.length === 0)
+    return <p className="text-xs text-gray-400 py-1">Nenhuma transação neste período.</p>;
+  return (
+    <div className="mt-2 space-y-1 max-h-48 overflow-y-auto pr-1">
+      {transactions.map((t) => (
+        <div key={t.id} className="flex items-center justify-between text-xs py-0.5">
+          <span className="text-gray-600 truncate max-w-[60%]">{t.description}</span>
+          <span className="text-red-500 font-medium whitespace-nowrap ml-2">{fmt(Number(t.amount))}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function InvoiceCard({ account }: { account: Account }) {
   const { data: invoice, isLoading } = useAccountInvoice(
     account.type === "credit_card" && account.closing_day ? account.id : null
@@ -54,6 +69,8 @@ function InvoiceCard({ account }: { account: Account }) {
   const payInvoice = usePayInvoice();
   const { data: accounts = [] } = useAccounts();
   const [payModalOpen, setPayModalOpen] = useState(false);
+  const [showCurrentTxs, setShowCurrentTxs] = useState(false);
+  const [showNextTxs, setShowNextTxs] = useState(false);
   const [error, setError] = useState("");
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<PayFormData>();
@@ -86,14 +103,26 @@ function InvoiceCard({ account }: { account: Account }) {
 
   return (
     <>
-      <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
+      <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 space-y-2">
         <div className="flex items-center justify-between text-xs">
           <span className="text-gray-500">Fatura atual</span>
           <span className="text-xs text-gray-400">
             {fmtDate(invoice.current_start)} – {fmtDate(invoice.current_end)}
           </span>
         </div>
-        <p className="text-lg font-bold text-red-500">{fmt(Number(invoice.current_total))}</p>
+        <div className="flex items-center justify-between">
+          <p className="text-lg font-bold text-red-500">{fmt(Number(invoice.current_total))}</p>
+          {invoice.current_transactions.length > 0 && (
+            <button
+              onClick={() => setShowCurrentTxs((v) => !v)}
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              {invoice.current_transactions.length} lançamentos
+              {showCurrentTxs ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            </button>
+          )}
+        </div>
+        {showCurrentTxs && <TransactionList transactions={invoice.current_transactions} />}
 
         <div className="flex items-center justify-between text-xs mt-1">
           <span className="text-gray-500">Próxima fatura</span>
@@ -101,7 +130,19 @@ function InvoiceCard({ account }: { account: Account }) {
             {fmtDate(invoice.next_start)} – {fmtDate(invoice.next_end)}
           </span>
         </div>
-        <p className="text-sm font-semibold text-gray-600">{fmt(Number(invoice.next_total))}</p>
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-gray-600">{fmt(Number(invoice.next_total))}</p>
+          {invoice.next_transactions.length > 0 && (
+            <button
+              onClick={() => setShowNextTxs((v) => !v)}
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              {invoice.next_transactions.length} lançamentos
+              {showNextTxs ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            </button>
+          )}
+        </div>
+        {showNextTxs && <TransactionList transactions={invoice.next_transactions} />}
 
         <p className="text-xs text-gray-400">Vencimento dia {invoice.due_day}</p>
 

@@ -2,7 +2,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
@@ -11,6 +11,7 @@ from app.models.account import Account, AccountType
 from app.models.transaction import Transaction, TransactionType
 from app.models.user import User
 from app.schemas.account import AccountCreate, AccountOut, AccountUpdate, InvoiceOut, PayInvoiceIn
+from app.schemas.transaction import TransactionOut
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
 
@@ -130,34 +131,35 @@ async def get_invoice(
     today = date.today()
     current_start, current_end, next_start, next_end = _invoice_period(account.closing_day, today)
 
-    # Sum transactions in current period
-    cur_result = await db.execute(
-        select(func.coalesce(func.sum(Transaction.amount), 0)).where(
-            Transaction.account_id == account_id,
-            Transaction.type == TransactionType.expense,
-            Transaction.transaction_date >= current_start,
-            Transaction.transaction_date <= current_end,
+    def _base_tx_query(start: date, end: date):
+        return (
+            select(Transaction)
+            .where(
+                Transaction.account_id == account_id,
+                Transaction.type == TransactionType.expense,
+                Transaction.transaction_date >= start,
+                Transaction.transaction_date <= end,
+            )
+            .order_by(Transaction.transaction_date, Transaction.id)
         )
-    )
-    current_total = Decimal(str(cur_result.scalar()))
 
-    nxt_result = await db.execute(
-        select(func.coalesce(func.sum(Transaction.amount), 0)).where(
-            Transaction.account_id == account_id,
-            Transaction.type == TransactionType.expense,
-            Transaction.transaction_date >= next_start,
-            Transaction.transaction_date <= next_end,
-        )
-    )
-    next_total = Decimal(str(nxt_result.scalar()))
+    cur_txs_result = await db.execute(_base_tx_query(current_start, current_end))
+    current_txs = cur_txs_result.scalars().all()
+    current_total = sum((t.amount for t in current_txs), Decimal("0"))
+
+    nxt_txs_result = await db.execute(_base_tx_query(next_start, next_end))
+    next_txs = nxt_txs_result.scalars().all()
+    next_total = sum((t.amount for t in next_txs), Decimal("0"))
 
     return InvoiceOut(
         current_total=current_total,
         current_start=current_start,
         current_end=current_end,
+        current_transactions=[TransactionOut.model_validate(t) for t in current_txs],
         next_total=next_total,
         next_start=next_start,
         next_end=next_end,
+        next_transactions=[TransactionOut.model_validate(t) for t in next_txs],
         due_day=account.due_day,
     )
 

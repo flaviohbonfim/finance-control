@@ -30,9 +30,11 @@ export interface InvoiceData {
   current_total: number;
   current_start: string;
   current_end: string;
+  current_transactions: Transaction[];
   next_total: number;
   next_start: string;
   next_end: string;
+  next_transactions: Transaction[];
   due_day: number;
 }
 

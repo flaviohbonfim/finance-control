@@ -4,6 +4,7 @@ from decimal import Decimal
 from pydantic import BaseModel
 
 from app.models.account import AccountType
+from app.schemas.transaction import TransactionOut
 
 
 class AccountCreate(BaseModel):
@@ -43,9 +44,11 @@ class InvoiceOut(BaseModel):
     current_total: Decimal
     current_start: date
     current_end: date
+    current_transactions: list[TransactionOut] = []
     next_total: Decimal
     next_start: date
     next_end: date
+    next_transactions: list[TransactionOut] = []
     due_day: int
 
 
