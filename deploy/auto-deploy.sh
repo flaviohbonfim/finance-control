@@ -20,10 +20,9 @@ ENV_FILE="${DEPLOY_DIR}/.env.prod"
 VERSION_FILE="${DEPLOY_DIR}/.current_version"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"          # opcional: aumenta rate limit da API
 REGISTRY="ghcr.io"
-LOG_PREFIX="[$(date '+%Y-%m-%d %H:%M:%S')]"
 
 # ---------------------------------------------------------------------------
-log() { echo "${LOG_PREFIX} $*"; }
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
 die() { log "ERRO: $*"; exit 1; }
 
 # ---------------------------------------------------------------------------
@@ -96,7 +95,9 @@ healthcheck() {
   local retries=24
   log "Aguardando healthcheck (até 2 min)..."
   for i in $(seq 1 ${retries}); do
-    if curl -fsSL http://localhost:8000/health >/dev/null 2>&1; then
+    local code
+    code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health 2>/dev/null || true)
+    if [ "${code}" = "200" ]; then
       log "Healthcheck OK após $((i * 5))s"
       return 0
     fi
