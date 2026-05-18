@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
     accounts,
+    ai,
     auth,
     categories,
     recurring_transactions,
@@ -16,3 +17,4 @@ router.include_router(categories.router)
 router.include_router(recurring_transactions.router)
 router.include_router(reports.router)
 router.include_router(transactions.router)
+router.include_router(ai.router)

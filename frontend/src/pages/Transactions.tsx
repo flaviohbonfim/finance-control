@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, SlidersHorizontal } from "lucide-react";
+import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, SlidersHorizontal, Sparkles } from "lucide-react";
 import {
   useTransactions,
   useAccounts,
@@ -10,6 +10,7 @@ import {
   useCreateTransaction,
   useUpdateTransaction,
   useDeleteTransaction,
+  useAutoCategorize,
 } from "@/hooks/useApi";
 import type { Transaction, TransactionType } from "@/types";
 import Card from "@/components/ui/Card";
@@ -41,8 +42,10 @@ export default function Transactions() {
   const [showFilters, setShowFilters] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
+  const [aiMessage, setAiMessage] = useState<string | null>(null);
 
   const { data: accounts = [] } = useAccounts();
+  const autoCategorize = useAutoCategorize();
   const { data: categories = [] } = useCategories();
   const { data, isLoading } = useTransactions({
     page,
@@ -116,12 +119,41 @@ export default function Transactions() {
             <SlidersHorizontal size={16} />
             <span className="hidden sm:inline">Filtros</span>
           </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={async () => {
+              setAiMessage(null);
+              try {
+                const result = await autoCategorize.mutateAsync();
+                setAiMessage(result.message);
+              } catch (e: unknown) {
+                const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+                setAiMessage(msg || "Erro ao categorizar");
+              }
+            }}
+            loading={autoCategorize.isPending}
+          >
+            <Sparkles size={16} />
+            <span className="hidden sm:inline">Auto-categorizar</span>
+          </Button>
           <Button size="sm" onClick={openCreate}>
             <Plus size={16} />
             <span className="hidden sm:inline">Nova</span>
           </Button>
         </div>
       </div>
+
+      {aiMessage && (
+        <div className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm ${
+          aiMessage.includes("Erro") || aiMessage.includes("erro")
+            ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400"
+            : "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300"
+        }`}>
+          <span><Sparkles size={14} className="inline mr-1.5" />{aiMessage}</span>
+          <button onClick={() => setAiMessage(null)} className="ml-3 opacity-60 hover:opacity-100">✕</button>
+        </div>
+      )}
 
       {/* Filters */}
       {showFilters && (

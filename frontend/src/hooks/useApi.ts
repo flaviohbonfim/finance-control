@@ -250,3 +250,18 @@ export const useMonthlyReport = (year?: number) =>
     queryFn: () =>
       api.get<MonthlySummary[]>("/reports/monthly", { params: year ? { year } : {} }).then((r) => r.data),
   });
+
+// AI
+export const useAutoCategorize = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      api.post<{ categorized: number; total_uncategorized: number; message: string }>(
+        "/ai/auto-categorize"
+      ).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["transactions"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+};
