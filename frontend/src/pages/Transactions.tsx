@@ -179,7 +179,7 @@ export default function Transactions() {
                 const amountStr = `${tx.type === "income" ? "+" : "-"}${fmt(Number(tx.amount))}`;
 
                 return (
-                  <div key={tx.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
+                  <div key={tx.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50 transition-colors">
                     {/* Mobile layout */}
                     <div className="flex sm:hidden items-center gap-3 px-4 py-3">
                       <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={iconStyle}>

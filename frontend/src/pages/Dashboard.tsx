@@ -86,7 +86,7 @@ function StatCard({
 function TransactionItem({ tx }: { tx: Transaction }) {
   const isIncome = tx.type === "income";
   return (
-    <div className="flex items-center gap-3 py-3 border-b border-gray-50 last:border-0">
+    <div className="flex items-center gap-3 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0">
       <div
         className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
         style={{
@@ -163,7 +163,7 @@ function RecurringWidget({ items }: { items: RecurringTransaction[] }) {
           {items.map((rt) => (
             <div
               key={rt.id}
-              className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0"
+              className="flex items-center gap-3 py-2 border-b border-gray-100 dark:border-gray-700 last:border-0"
             >
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"

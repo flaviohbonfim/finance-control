@@ -126,7 +126,7 @@ export default function Reports() {
                   {(data || []).map((m, i) => {
                     const balance = Number(m.income) - Number(m.expense);
                     return (
-                      <tr key={m.month} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
+                      <tr key={m.month} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50">
                         <td className="px-5 py-3 font-medium text-gray-900">{MONTH_NAMES[i]}</td>
                         <td className="px-5 py-3 text-right text-green-600">{fmt(Number(m.income))}</td>
                         <td className="px-5 py-3 text-right text-red-500">{fmt(Number(m.expense))}</td>
