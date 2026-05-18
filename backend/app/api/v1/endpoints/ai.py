@@ -56,6 +56,7 @@ async def _tool_get_accounts(db: AsyncSession, user: User) -> str:
 
 async def _tool_get_dashboard(db: AsyncSession, user: User) -> str:
     import calendar as cal_mod
+
     from sqlalchemy import func
 
     today = date.today()
@@ -136,6 +137,7 @@ async def _tool_get_transactions(
 async def _tool_get_monthly_summary(db: AsyncSession, user: User, year: int) -> str:
     import calendar as cal_mod
     from decimal import Decimal as D
+
     from sqlalchemy import func
 
     months = []
@@ -173,6 +175,7 @@ async def _tool_get_expense_by_category(
 ) -> str:
     import calendar as cal_mod
     from decimal import Decimal as D
+
     from sqlalchemy import func
 
     m_start = date(year, month, 1)
@@ -213,7 +216,7 @@ async def _tool_get_expense_by_category(
 TOOL_DEFINITIONS = [
     {
         "name": "get_accounts",
-        "description": "Retorna todas as contas bancárias do usuário com saldo atual, tipo e limite de crédito.",
+        "description": "Retorna as contas do usuário com saldo, tipo e limite de crédito.",
         "parameters": {
             "type": "object",
             "properties": {},
@@ -222,7 +225,7 @@ TOOL_DEFINITIONS = [
     },
     {
         "name": "get_dashboard",
-        "description": "Retorna resumo financeiro do mês atual: saldo total, receitas, despesas e saldo do mês.",
+        "description": "Retorna resumo do mês atual: saldo total, receitas, despesas e saldo.",
         "parameters": {
             "type": "object",
             "properties": {},
@@ -235,17 +238,30 @@ TOOL_DEFINITIONS = [
         "parameters": {
             "type": "object",
             "properties": {
-                "date_from": {"type": "string", "description": "Data inicial no formato YYYY-MM-DD"},
-                "date_to": {"type": "string", "description": "Data final no formato YYYY-MM-DD"},
-                "type_filter": {"type": "string", "enum": ["income", "expense"], "description": "Filtrar por tipo"},
-                "limit": {"type": "integer", "description": "Número máximo de transações (máx 50, padrão 20)"},
+                "date_from": {
+                    "type": "string",
+                    "description": "Data inicial no formato YYYY-MM-DD",
+                },
+                "date_to": {
+                    "type": "string",
+                    "description": "Data final no formato YYYY-MM-DD",
+                },
+                "type_filter": {
+                    "type": "string",
+                    "enum": ["income", "expense"],
+                    "description": "Filtrar por tipo",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Número máximo de transações (máx 50, padrão 20)",
+                },
             },
             "required": [],
         },
     },
     {
         "name": "get_monthly_summary",
-        "description": "Retorna o resumo mensal de receitas, despesas e saldo para todos os meses de um ano.",
+        "description": "Retorna receitas, despesas e saldo de todos os meses de um ano.",
         "parameters": {
             "type": "object",
             "properties": {
