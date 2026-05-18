@@ -14,7 +14,7 @@ from app.models.recurring_transaction import RecurringFrequency, RecurringTransa
 from app.models.transaction import Transaction, TransactionType
 from app.models.user import User
 from app.schemas.recurring_transaction import RecurringOut
-from app.schemas.report import CategorySummary, DashboardSummary, MonthlySummary
+from app.schemas.report import CategorySummary, DashboardSummary, MonthlyDetail, MonthlySummary
 from app.schemas.transaction import TransactionOut
 
 router = APIRouter(prefix="/reports", tags=["reports"])
@@ -250,3 +250,95 @@ async def monthly_report(
         e = Decimal(str(exp.scalar()))
         result.append(MonthlySummary(month=label, income=i, expense=e, balance=i - e))
     return result
+
+
+@router.get("/monthly-detail", response_model=MonthlyDetail)
+async def monthly_detail(
+    year: int = Query(default=None),
+    month: int = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    import calendar
+
+    today = date.today()
+    year = year or today.year
+    month = month or today.month
+    m_start = date(year, month, 1)
+    m_end = date(year, month, calendar.monthrange(year, month)[1])
+    label = f"{year}-{month:02d}"
+
+    inc = await db.execute(
+        select(func.coalesce(func.sum(Transaction.amount), 0)).where(
+            Transaction.user_id == current_user.id,
+            Transaction.type == TransactionType.income,
+            Transaction.transaction_date >= m_start,
+            Transaction.transaction_date <= m_end,
+        )
+    )
+    exp = await db.execute(
+        select(func.coalesce(func.sum(Transaction.amount), 0)).where(
+            Transaction.user_id == current_user.id,
+            Transaction.type == TransactionType.expense,
+            Transaction.transaction_date >= m_start,
+            Transaction.transaction_date <= m_end,
+        )
+    )
+    income = Decimal(str(inc.scalar()))
+    expense = Decimal(str(exp.scalar()))
+
+    # Despesas por categoria
+    cat_result = await db.execute(
+        select(
+            Category.id,
+            Category.name,
+            Category.color,
+            func.sum(Transaction.amount).label("total"),
+        )
+        .select_from(Transaction)
+        .join(Category, Transaction.category_id == Category.id, isouter=True)
+        .where(
+            Transaction.user_id == current_user.id,
+            Transaction.type == TransactionType.expense,
+            Transaction.transaction_date >= m_start,
+            Transaction.transaction_date <= m_end,
+        )
+        .group_by(Category.id, Category.name, Category.color)
+        .order_by(func.sum(Transaction.amount).desc())
+    )
+    cat_rows = cat_result.all()
+    total_exp = expense or Decimal("1")
+    expense_by_category = [
+        CategorySummary(
+            category_id=r.id,
+            category_name=r.name or "Sem categoria",
+            category_color=r.color or "#9ca3af",
+            total=Decimal(str(r.total)),
+            percentage=float(Decimal(str(r.total)) / total_exp * 100),
+        )
+        for r in cat_rows
+    ]
+
+    # Top 10 transações de despesa
+    top_result = await db.execute(
+        select(Transaction)
+        .where(
+            Transaction.user_id == current_user.id,
+            Transaction.type == TransactionType.expense,
+            Transaction.transaction_date >= m_start,
+            Transaction.transaction_date <= m_end,
+        )
+        .options(selectinload(Transaction.category))
+        .order_by(Transaction.amount.desc())
+        .limit(10)
+    )
+    top_txs = top_result.scalars().all()
+
+    return MonthlyDetail(
+        month=label,
+        income=income,
+        expense=expense,
+        balance=income - expense,
+        expense_by_category=expense_by_category,
+        top_transactions=[TransactionOut.model_validate(t) for t in top_txs],
+    )

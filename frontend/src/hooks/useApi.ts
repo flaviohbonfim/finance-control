@@ -6,6 +6,7 @@ import type {
   Category,
   DashboardSummary,
   InvoiceData,
+  MonthlyDetail,
   MonthlySummary,
   PaginatedTransactions,
   RecurringTransaction,
@@ -249,6 +250,13 @@ export const useMonthlyReport = (year?: number) =>
     queryKey: ["monthly-report", year],
     queryFn: () =>
       api.get<MonthlySummary[]>("/reports/monthly", { params: year ? { year } : {} }).then((r) => r.data),
+  });
+
+export const useMonthlyDetail = (year: number, month: number) =>
+  useQuery({
+    queryKey: ["monthly-detail", year, month],
+    queryFn: () =>
+      api.get<MonthlyDetail>("/reports/monthly-detail", { params: { year, month } }).then((r) => r.data),
   });
 
 // AI

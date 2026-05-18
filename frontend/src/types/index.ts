@@ -87,6 +87,15 @@ export interface CategorySummary {
   percentage: number;
 }
 
+export interface MonthlyDetail {
+  month: string;
+  income: number;
+  expense: number;
+  balance: number;
+  expense_by_category: CategorySummary[];
+  top_transactions: Transaction[];
+}
+
 export interface DashboardSummary {
   total_balance: number;
   monthly_income: number;

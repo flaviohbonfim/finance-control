@@ -3,6 +3,7 @@ from decimal import Decimal
 from pydantic import BaseModel
 
 from app.schemas.recurring_transaction import RecurringOut
+from app.schemas.transaction import TransactionOut
 
 
 class MonthlySummary(BaseModel):
@@ -18,6 +19,15 @@ class CategorySummary(BaseModel):
     category_color: str
     total: Decimal
     percentage: float
+
+
+class MonthlyDetail(BaseModel):
+    month: str
+    income: Decimal
+    expense: Decimal
+    balance: Decimal
+    expense_by_category: list[CategorySummary]
+    top_transactions: list[TransactionOut]
 
 
 class DashboardSummary(BaseModel):
