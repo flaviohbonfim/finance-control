@@ -93,16 +93,16 @@ restart_services() {
 # Healthcheck pós-deploy
 # ---------------------------------------------------------------------------
 healthcheck() {
-  local retries=12
-  log "Aguardando healthcheck..."
+  local retries=24
+  log "Aguardando healthcheck (até 2 min)..."
   for i in $(seq 1 ${retries}); do
     if curl -fsSL http://localhost:8000/health >/dev/null 2>&1; then
-      log "Healthcheck OK após ${i}x5s"
+      log "Healthcheck OK após $((i * 5))s"
       return 0
     fi
     sleep 5
   done
-  log "AVISO: healthcheck não respondeu em tempo hábil"
+  log "AVISO: healthcheck não respondeu em 2 min (app pode estar ok, verifique)"
   return 1
 }
 
@@ -134,12 +134,15 @@ main() {
   run_migrations "${LATEST}"
   restart_services "${LATEST}"
 
+  # Salva a versão independente do healthcheck — o deploy já foi aplicado
+  echo "${LATEST}" > "${VERSION_FILE}"
+
   if healthcheck; then
-    echo "${LATEST}" > "${VERSION_FILE}"
     log "Deploy da versão ${LATEST} concluído com sucesso!"
   else
-    log "AVISO: Deploy realizado mas healthcheck falhou. Verifique os logs."
-    log "  docker compose -f ${COMPOSE_FILE} logs --tail=50"
+    log "AVISO: healthcheck não respondeu, mas imagens e migrations foram aplicados."
+    log "  Verifique: docker compose -f ${COMPOSE_FILE} logs --tail=50"
+    log "  Teste manual: curl http://localhost:8000/health"
   fi
 }
 
