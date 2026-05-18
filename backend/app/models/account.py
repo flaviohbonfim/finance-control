@@ -40,7 +40,9 @@ class Account(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     user: Mapped[User] = relationship(back_populates="accounts")
-    transactions: Mapped[list[Transaction]] = relationship(back_populates="account")
+    transactions: Mapped[list[Transaction]] = relationship(
+        back_populates="account", cascade="all, delete-orphan"
+    )
     recurring_transactions: Mapped[list[RecurringTransaction]] = relationship(
-        back_populates="account"
+        back_populates="account", cascade="all, delete-orphan"
     )
