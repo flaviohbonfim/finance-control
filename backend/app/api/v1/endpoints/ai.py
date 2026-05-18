@@ -1,4 +1,3 @@
-import asyncio
 import json
 import re
 
@@ -67,13 +66,13 @@ Responda APENAS com um array JSON válido, sem explicações, sem markdown:
 Se uma transação não se encaixar em nenhuma categoria, omita-a do resultado."""
 
     try:
-        import google.generativeai as genai
+        from google import genai
 
-        genai.configure(api_key=settings.GEMINI_API_KEY)
-        model = genai.GenerativeModel("gemini-1.5-flash")
-
-        # Executa em thread para não bloquear o event loop
-        response = await asyncio.to_thread(model.generate_content, prompt)
+        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        response = await client.aio.models.generate_content(
+            model="gemini-2.5-flash-preview-05-20",
+            contents=prompt,
+        )
         raw = response.text.strip()
 
         # Extrai JSON mesmo se vier com markdown
