@@ -228,7 +228,7 @@ export default function Reports() {
                     <ResponsiveContainer width="100%" height={220}>
                       <PieChart>
                         <Pie
-                          data={detail.expense_by_category}
+                          data={detail.expense_by_category.map((c) => ({ ...c, total: Number(c.total) }))}
                           dataKey="total"
                           nameKey="category_name"
                           cx="50%"
