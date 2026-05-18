@@ -25,8 +25,11 @@ async def dashboard(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    import calendar
+
     today = date.today()
     month_start = today.replace(day=1)
+    month_end = today.replace(day=calendar.monthrange(today.year, today.month)[1])
 
     # Total balance across all accounts
     bal_result = await db.execute(
@@ -42,6 +45,7 @@ async def dashboard(
             Transaction.user_id == current_user.id,
             Transaction.type == TransactionType.income,
             Transaction.transaction_date >= month_start,
+            Transaction.transaction_date <= month_end,
         )
     )
     monthly_income = inc_result.scalar()
@@ -52,6 +56,7 @@ async def dashboard(
             Transaction.user_id == current_user.id,
             Transaction.type == TransactionType.expense,
             Transaction.transaction_date >= month_start,
+            Transaction.transaction_date <= month_end,
         )
     )
     monthly_expense = exp_result.scalar()
@@ -123,6 +128,7 @@ async def dashboard(
             Transaction.user_id == current_user.id,
             Transaction.type == TransactionType.expense,
             Transaction.transaction_date >= month_start,
+            Transaction.transaction_date <= month_end,
         )
         .group_by(Category.id, Category.name, Category.color)
         .order_by(func.sum(Transaction.amount).desc())
