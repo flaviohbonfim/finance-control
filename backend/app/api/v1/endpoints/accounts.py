@@ -4,6 +4,7 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
@@ -140,6 +141,7 @@ async def get_invoice(
                 Transaction.transaction_date >= start,
                 Transaction.transaction_date <= end,
             )
+            .options(selectinload(Transaction.category))
             .order_by(Transaction.transaction_date, Transaction.id)
         )
 
