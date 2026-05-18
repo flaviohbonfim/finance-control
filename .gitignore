@@ -39,3 +39,9 @@ logs/
 
 # Deploy
 deploy/current_version
+
+despesas
+
+.claude
+tmp
+plans

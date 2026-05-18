@@ -12,10 +12,18 @@ import Recorrentes from "@/pages/Recorrentes";
 import Transactions from "@/pages/Transactions";
 import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
+import ChatWidget from "@/components/chat/ChatWidget";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { token } = useAuthStore();
-  return token ? <>{children}</> : <Navigate to="/login" replace />;
+  return token ? (
+    <>
+      {children}
+      <ChatWidget />
+    </>
+  ) : (
+    <Navigate to="/login" replace />
+  );
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
