@@ -70,7 +70,7 @@ Se uma transação não se encaixar em nenhuma categoria, omita-a do resultado."
 
         client = genai.Client(api_key=settings.GEMINI_API_KEY)
         response = await client.aio.models.generate_content(
-            model="gemini-2.5-flash-preview-05-20",
+            model="gemini-2.5-flash",
             contents=prompt,
         )
         raw = response.text.strip()
