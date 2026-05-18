@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { Plus, Pencil, Trash2, Wallet, CreditCard, Receipt, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Pencil, Trash2, Wallet, CreditCard, Receipt, ChevronDown, ChevronUp, ArrowUpDown } from "lucide-react";
 import {
   useAccounts,
   useCreateAccount,
@@ -193,6 +193,16 @@ function InvoiceCard({ account }: { account: Account }) {
   );
 }
 
+type FilterType = "all" | "accounts" | "cards";
+type SortBy = "type-accounts" | "type-cards" | "name" | "balance";
+
+const sortLabels: Record<SortBy, string> = {
+  "type-accounts": "Contas primeiro",
+  "type-cards": "Cartões primeiro",
+  name: "Nome (A–Z)",
+  balance: "Saldo",
+};
+
 export default function Accounts() {
   const { data: accounts = [] } = useAccounts();
   const create = useCreateAccount();
@@ -202,6 +212,8 @@ export default function Accounts() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Account | null>(null);
   const [submitError, setSubmitError] = useState("");
+  const [filterType, setFilterType] = useState<FilterType>("all");
+  const [sortBy, setSortBy] = useState<SortBy>("type-accounts");
 
   const {
     register,
@@ -259,6 +271,34 @@ export default function Accounts() {
 
   const totalBalance = accounts.reduce((s, a) => s + Number(a.balance), 0);
 
+  const filteredAccounts = accounts
+    .filter((a) => {
+      if (filterType === "accounts") return a.type !== "credit_card";
+      if (filterType === "cards") return a.type === "credit_card";
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === "type-accounts") {
+        const aIsCard = a.type === "credit_card" ? 1 : 0;
+        const bIsCard = b.type === "credit_card" ? 1 : 0;
+        return aIsCard - bIsCard || a.name.localeCompare(b.name);
+      }
+      if (sortBy === "type-cards") {
+        const aIsCard = a.type === "credit_card" ? 0 : 1;
+        const bIsCard = b.type === "credit_card" ? 0 : 1;
+        return aIsCard - bIsCard || a.name.localeCompare(b.name);
+      }
+      if (sortBy === "name") return a.name.localeCompare(b.name);
+      if (sortBy === "balance") return Number(b.balance) - Number(a.balance);
+      return 0;
+    });
+
+  const filterTabs: { key: FilterType; label: string; count: number }[] = [
+    { key: "all", label: "Todas", count: accounts.length },
+    { key: "accounts", label: "Contas", count: accounts.filter((a) => a.type !== "credit_card").length },
+    { key: "cards", label: "Cartões", count: accounts.filter((a) => a.type === "credit_card").length },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -271,8 +311,47 @@ export default function Accounts() {
         </Button>
       </div>
 
+      {/* Filter tabs + sort */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
+          {filterTabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setFilterType(tab.key)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                filterType === tab.key
+                  ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                  : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+              }`}
+            >
+              {tab.label}
+              <span className={`text-xs rounded-full px-1.5 py-0.5 ${
+                filterType === tab.key
+                  ? "bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300"
+                  : "bg-gray-200 dark:bg-gray-700 text-gray-500"
+              }`}>
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2 text-sm text-gray-500">
+          <ArrowUpDown size={14} />
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortBy)}
+            className="bg-transparent border-none text-sm text-gray-600 dark:text-gray-400 cursor-pointer focus:outline-none"
+          >
+            {(Object.keys(sortLabels) as SortBy[]).map((k) => (
+              <option key={k} value={k}>{sortLabels[k]}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {accounts.map((acc) => (
+        {filteredAccounts.map((acc) => (
           <Card key={acc.id}>
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3">
@@ -317,13 +396,15 @@ export default function Accounts() {
           </Card>
         ))}
 
-        {accounts.length === 0 && (
+        {filteredAccounts.length === 0 && (
           <div className="sm:col-span-2 lg:col-span-3 text-center py-16 text-gray-400">
             <Wallet size={40} className="mx-auto mb-3 opacity-30" />
-            <p>Nenhuma conta cadastrada</p>
-            <Button onClick={openCreate} size="sm" variant="ghost" className="mt-3">
-              Adicionar conta
-            </Button>
+            <p>{accounts.length === 0 ? "Nenhuma conta cadastrada" : "Nenhuma conta neste filtro"}</p>
+            {accounts.length === 0 && (
+              <Button onClick={openCreate} size="sm" variant="ghost" className="mt-3">
+                Adicionar conta
+              </Button>
+            )}
           </div>
         )}
       </div>
