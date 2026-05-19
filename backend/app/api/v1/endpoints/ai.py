@@ -711,7 +711,7 @@ def _provider_clients() -> list[tuple]:
     def _cerebras():
         return (
             AsyncOpenAI(api_key=settings.CEREBRAS_API_KEY, base_url="https://api.cerebras.ai/v1"),
-            "llama-3.3-70b",
+            "gpt-oss-120b",
         )
 
     def _gemini():
