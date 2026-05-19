@@ -28,9 +28,7 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False, index=True),
         sa.Column("telegram_chat_id", sa.BigInteger(), nullable=False, unique=True, index=True),
-        sa.Column(
-            "linked_at", sa.DateTime(), nullable=False, server_default=sa.func.now()
-        ),
+        sa.Column("linked_at", sa.DateTime(), nullable=False, server_default=sa.func.now()),
     )
 
 
