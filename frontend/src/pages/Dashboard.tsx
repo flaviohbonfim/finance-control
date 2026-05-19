@@ -289,13 +289,7 @@ function CreditCardBillsSection({ bills }: { bills: CreditCardBill[] }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-gray-900">Faturas dos Cartões</h2>
-        <div className="text-right">
-          <p className="text-xs text-gray-400">Próximo ciclo (total)</p>
-          <p className="text-sm font-bold text-red-500">{fmt(totalNext)}</p>
-        </div>
-      </div>
+      <h2 className="text-sm font-semibold text-gray-900">Faturas dos Cartões</h2>
 
       {/* Total summary bar */}
       <Card className="bg-gray-50 border-0">
