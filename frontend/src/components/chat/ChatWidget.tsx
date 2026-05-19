@@ -146,6 +146,8 @@ export default function ChatWidget() {
                   )
                 );
                 setToolHint(null);
+              } else if (currentEvent === "status" && parsed.text) {
+                setToolHint(parsed.text);
               } else if (currentEvent === "tool_call" && parsed.name) {
                 const hints: Record<string, string> = {
                   get_accounts: "consultando contas...",
@@ -178,11 +180,12 @@ export default function ChatWidget() {
             : m
         )
       );
-    } catch {
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : "Tente novamente.";
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantId
-            ? { ...m, loading: false, content: "Erro ao conectar com o assistente. Tente novamente." }
+            ? { ...m, loading: false, content: `⚠️ ${detail}` }
             : m
         )
       );

@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from collections.abc import AsyncGenerator
 from datetime import date
@@ -17,6 +18,8 @@ from app.models.account import Account
 from app.models.category import Category
 from app.models.transaction import Transaction, TransactionType
 from app.models.user import User
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
@@ -362,43 +365,45 @@ async def _chat_stream(
         )
     ]
 
-    final_response = None
+    MODEL = "gemini-2.0-flash"
+    base_config = gtypes.GenerateContentConfig(
+        system_instruction=system_instruction,
+        tools=tools,
+        temperature=0.3,
+    )
+
     try:
-        MAX_TOOL_ROUNDS = 5
-        for _ in range(MAX_TOOL_ROUNDS):
+        # ── Agentic loop: resolve tool calls (non-streaming) ──────────────────
+        yield _sse("status", json.dumps({"text": "pensando..."}))
+
+        for _ in range(5):
             response = await client.aio.models.generate_content(
-                model="gemini-2.5-flash",
+                model=MODEL,
                 contents=contents,
-                config=gtypes.GenerateContentConfig(
-                    system_instruction=system_instruction,
-                    tools=tools,
-                    temperature=0.3,
-                    thinking_config=gtypes.ThinkingConfig(thinking_budget=0),
-                ),
+                config=base_config,
             )
 
             candidate = response.candidates[0]
-            has_tool_call = any(
-                part.function_call is not None
-                for part in candidate.content.parts
-                if hasattr(part, "function_call") and part.function_call is not None
-            )
+            tool_call_parts = [
+                p
+                for p in candidate.content.parts
+                if hasattr(p, "function_call") and p.function_call
+            ]
 
-            if not has_tool_call:
-                final_response = response
-                break
+            if not tool_call_parts:
+                break  # no more tool calls — proceed to streaming final answer
 
             contents.append(candidate.content)
 
             tool_parts = []
-            for part in candidate.content.parts:
-                if part.function_call is None:
-                    continue
+            for part in tool_call_parts:
                 fc = part.function_call
                 tool_args = dict(fc.args) if fc.args else {}
+                logger.info("Tool call: %s(%s)", fc.name, tool_args)
 
                 yield _sse("tool_call", json.dumps({"name": fc.name}))
                 tool_result = await _dispatch_tool(fc.name, tool_args, db, user)
+                logger.info("Tool result for %s: %s", fc.name, tool_result[:200])
 
                 tool_parts.append(
                     gtypes.Part(
@@ -410,45 +415,39 @@ async def _chat_stream(
                 )
 
             contents.append(gtypes.Content(role="user", parts=tool_parts))
+            yield _sse("status", json.dumps({"text": "processando dados..."}))
+
+        # ── Stream final answer token-by-token ────────────────────────────────
+        yield _sse("status", json.dumps({"text": "gerando resposta..."}))
+
+        full_text = ""
+        stream_config = gtypes.GenerateContentConfig(
+            system_instruction=system_instruction,
+            temperature=0.3,
+        )
+        async for chunk in await client.aio.models.generate_content_stream(
+            model=MODEL,
+            contents=contents,
+            config=stream_config,
+        ):
+            try:
+                text = chunk.text
+                if text:
+                    full_text += text
+                    yield _sse("delta", json.dumps({"text": text}))
+            except Exception:
+                pass
 
     except Exception as e:
-        yield _sse("error", json.dumps({"detail": f"Erro ao chamar Gemini: {e}"}))
+        logger.exception("Erro no chat stream: %s", e)
+        yield _sse("error", json.dumps({"detail": str(e)}))
         return
 
-    if final_response is None:
-        yield _sse("error", json.dumps({"detail": "Modelo não gerou resposta de texto"}))
-        return
-
-    # Extract text — skip thinking parts (type="thinking"), keep only regular text parts
-    final_text = ""
-    try:
-        for p in final_response.candidates[0].content.parts:
-            if not hasattr(p, "text") or not p.text:
-                continue
-            # thinking parts have a "thought" attribute set to True in some SDK versions
-            if getattr(p, "thought", False):
-                continue
-            final_text += p.text
-    except Exception:
-        pass
-
-    if not final_text:
-        # last resort: use SDK convenience property
-        try:
-            final_text = final_response.text or ""
-        except Exception:
-            pass
-
-    if not final_text:
+    if not full_text:
         yield _sse("error", json.dumps({"detail": "Resposta vazia do modelo"}))
         return
 
-    words = final_text.split(" ")
-    for i, word in enumerate(words):
-        chunk = word if i == 0 else " " + word
-        yield _sse("delta", json.dumps({"text": chunk}))
-
-    yield _sse("done", json.dumps({"text": final_text}))
+    yield _sse("done", json.dumps({"text": full_text}))
 
 
 def _schema_to_genai(schema: dict) -> dict:
