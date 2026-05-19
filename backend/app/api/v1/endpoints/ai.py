@@ -653,12 +653,15 @@ async def _dispatch_tool(name: str, args: dict, db: AsyncSession, user: User) ->
             db, user, year=args.get("year", today.year), month=args.get("month", today.month)
         )
     if name == "create_transaction":
+        args["account_id"] = int(args["account_id"])
+        if "category_id" in args and args["category_id"] is not None:
+            args["category_id"] = int(args["category_id"])
         return await _tool_create_transaction(db, user, **args)
     if name == "delete_transaction":
-        return await _tool_delete_transaction(db, user, transaction_id=args["transaction_id"])
+        return await _tool_delete_transaction(db, user, transaction_id=int(args["transaction_id"]))
     if name == "launch_recurring":
         return await _tool_launch_recurring(
-            db, user, recurring_id=args["recurring_id"], amount=args.get("amount")
+            db, user, recurring_id=int(args["recurring_id"]), amount=args.get("amount")
         )
     return json.dumps({"error": f"Tool desconhecida: {name}"})
 
@@ -683,10 +686,11 @@ async def _chat_stream(
         "Você tem acesso a ferramentas para CONSULTAR e MODIFICAR as finanças do usuário. "
         "Responda sempre em português brasileiro de forma clara e objetiva. "
         "Use dados reais das ferramentas para responder. "
-        "Para operações de escrita (criar/deletar transações, lançar recorrentes): "
-        "confirme os detalhes com o usuário antes de executar se houver ambiguidade. "
-        "Ao criar transações, use get_accounts para obter IDs de contas válidos e "
-        "get_categories para obter IDs de categorias válidos quando necessário. "
+        "REGRA OBRIGATÓRIA: antes de chamar create_transaction, você DEVE chamar get_accounts "
+        "para obter o account_id numérico real da conta. Se o usuário mencionar categoria, "
+        "chame get_categories antes para obter o category_id numérico real. "
+        "Nunca invente IDs ou use strings como IDs — apenas integers retornados pelas ferramentas. "
+        "Para operações de escrita, confirme os detalhes com o usuário se houver ambiguidade. "
         f"A data de hoje é {date.today().strftime('%d/%m/%Y')}."
     )
 
