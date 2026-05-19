@@ -59,6 +59,7 @@ pull_images() {
 
   docker pull "${REGISTRY}/${GITHUB_REPO}/backend:${tag}"
   docker pull "${REGISTRY}/${GITHUB_REPO}/frontend:${tag}"
+  docker pull "${REGISTRY}/${GITHUB_REPO}/telegram-bot:${tag}"
 }
 
 # ---------------------------------------------------------------------------

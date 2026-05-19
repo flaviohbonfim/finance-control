@@ -144,19 +144,19 @@ function TelegramSection() {
   const [unlinking, setUnlinking] = useState(false);
 
   useEffect(() => {
-    api.get("/api/v1/telegram/status").then((r) => setLinked(r.data.linked)).catch(() => {});
+    api.get("/telegram/status").then((r) => setLinked(r.data.linked)).catch(() => {});
   }, []);
 
   const handleLink = async () => {
     setLinking(true);
     try {
-      const { data } = await api.post("/api/v1/telegram/generate-link");
+      const { data } = await api.post("/telegram/generate-link");
       window.open(data.url, "_blank");
       // Poll status a cada 3s por até 30s para detectar vinculação
       let attempts = 0;
       const interval = setInterval(async () => {
         attempts++;
-        const r = await api.get("/api/v1/telegram/status");
+        const r = await api.get("/telegram/status");
         if (r.data.linked) {
           setLinked(true);
           clearInterval(interval);
@@ -174,7 +174,7 @@ function TelegramSection() {
   const handleUnlink = async () => {
     setUnlinking(true);
     try {
-      await api.delete("/api/v1/telegram/unlink");
+      await api.delete("/telegram/unlink");
       setLinked(false);
     } finally {
       setUnlinking(false);
