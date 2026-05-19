@@ -4,8 +4,6 @@ services:
     container_name: finance_backend
     restart: always
     env_file: .env.prod
-    ports:
-      - "8000:8000"
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 
   frontend:
@@ -13,7 +11,9 @@ services:
     container_name: finance_frontend
     restart: always
     ports:
-      - "3000:80"
+      - "8080:80"
+    depends_on:
+      - backend
 
   telegram-bot:
     image: ghcr.io/${GITHUB_REPOSITORY}/telegram-bot:${RELEASE_TAG}

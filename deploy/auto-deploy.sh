@@ -76,6 +76,21 @@ run_migrations() {
 }
 
 # ---------------------------------------------------------------------------
+# Baixa o docker-compose.prod.yml mais recente do repositório
+# ---------------------------------------------------------------------------
+update_compose_file() {
+  local tag="$1"
+  local url="https://raw.githubusercontent.com/${GITHUB_REPO}/${tag}/docker-compose.prod.yml"
+  local headers=(-H "Accept: application/vnd.github.raw+json")
+  [ -n "${GITHUB_TOKEN}" ] && headers+=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
+
+  log "Atualizando docker-compose.prod.yml para ${tag}..."
+  curl -fsSL "${headers[@]}" "${url}" -o "${COMPOSE_FILE}.new" \
+    && mv "${COMPOSE_FILE}.new" "${COMPOSE_FILE}" \
+    || log "AVISO: não foi possível atualizar o compose file, usando versão local"
+}
+
+# ---------------------------------------------------------------------------
 # Reinicia os serviços com a nova tag
 # ---------------------------------------------------------------------------
 restart_services() {
@@ -84,7 +99,6 @@ restart_services() {
   export RELEASE_TAG="${tag}"
   export GITHUB_REPOSITORY="${GITHUB_REPO}"
 
-  docker compose -f "${COMPOSE_FILE}" pull  2>/dev/null || true
   docker compose -f "${COMPOSE_FILE}" up -d --remove-orphans
   docker image prune -f --filter "until=24h" 2>/dev/null || true
 }
@@ -131,6 +145,7 @@ main() {
   log "Nova versão disponível: ${CURRENT} → ${LATEST}"
 
   pull_images "${LATEST}"
+  update_compose_file "${LATEST}"
   run_migrations "${LATEST}"
   restart_services "${LATEST}"
 
