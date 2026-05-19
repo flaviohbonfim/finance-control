@@ -739,7 +739,7 @@ async def _chat_stream(
 
             for tc in tool_calls:
                 fn_name = tc.function.name
-                fn_args = json.loads(tc.function.arguments or "{}")
+                fn_args = json.loads(tc.function.arguments or "{}") or {}
                 logger.info("Tool call: %s(%s)", fn_name, fn_args)
 
                 yield _sse("tool_call", json.dumps({"name": fn_name}))
