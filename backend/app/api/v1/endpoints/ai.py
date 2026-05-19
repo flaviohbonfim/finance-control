@@ -250,18 +250,34 @@ async def _tool_get_credit_card_bills(db: AsyncSession, user: User) -> str:
 
         year, month = today.year, today.month
         last_day = cal_mod.monthrange(year, month)[1]
-        current_end = date(year, month, min(cd, last_day))
+        dd = card.due_day
 
-        prev_month = month - 1 if month > 1 else 12
-        prev_year = year if month > 1 else year - 1
-        prev_last = cal_mod.monthrange(prev_year, prev_month)[1]
-        current_start = date(prev_year, prev_month, min(cd, prev_last)) + timedelta(days=1)
+        if dd is not None and dd < cd:
+            # Payment due in the month AFTER closing → shift one cycle back
+            prev_month = month - 1 if month > 1 else 12
+            prev_year = year if month > 1 else year - 1
+            prev_last = cal_mod.monthrange(prev_year, prev_month)[1]
+            current_end = date(prev_year, prev_month, min(cd, prev_last))
 
-        next_start = current_end + timedelta(days=1)
-        next_month = month + 1 if month < 12 else 1
-        next_year = year if month < 12 else year + 1
-        next_last = cal_mod.monthrange(next_year, next_month)[1]
-        next_end = date(next_year, next_month, min(cd, next_last))
+            prev2_month = prev_month - 1 if prev_month > 1 else 12
+            prev2_year = prev_year if prev_month > 1 else prev_year - 1
+            prev2_last = cal_mod.monthrange(prev2_year, prev2_month)[1]
+            current_start = date(prev2_year, prev2_month, min(cd, prev2_last)) + timedelta(days=1)
+
+            next_start = current_end + timedelta(days=1)
+            next_end = date(year, month, min(cd, last_day))
+        else:
+            current_end = date(year, month, min(cd, last_day))
+            prev_month = month - 1 if month > 1 else 12
+            prev_year = year if month > 1 else year - 1
+            prev_last = cal_mod.monthrange(prev_year, prev_month)[1]
+            current_start = date(prev_year, prev_month, min(cd, prev_last)) + timedelta(days=1)
+
+            next_start = current_end + timedelta(days=1)
+            next_month = month + 1 if month < 12 else 1
+            next_year = year if month < 12 else year + 1
+            next_last = cal_mod.monthrange(next_year, next_month)[1]
+            next_end = date(next_year, next_month, min(cd, next_last))
 
         def _make_query(start: date, end: date, acct_id: int):
             return select(func.coalesce(func.sum(Transaction.amount), 0)).where(
