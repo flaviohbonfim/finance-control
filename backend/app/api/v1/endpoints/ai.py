@@ -673,166 +673,96 @@ def _sse(event: str, data: str) -> str:
     return f"event: {event}\ndata: {data}\n\n"
 
 
-async def _chat_stream(
-    request: ChatRequest, db: AsyncSession, user: User
-) -> AsyncGenerator[str, None]:
+# ── AI provider helpers ───────────────────────────────────────────────────────
+
+_SYSTEM_PROMPT = (
+    "Você é um assistente financeiro pessoal inteligente e simpático. "
+    "Você tem acesso a ferramentas para CONSULTAR e MODIFICAR as finanças do usuário. "
+    "Responda sempre em português brasileiro de forma clara e objetiva. "
+    "Use dados reais das ferramentas para responder. "
+    "REGRA OBRIGATÓRIA: antes de chamar create_transaction, você DEVE chamar get_accounts "
+    "para obter o account_id numérico real da conta. Se o usuário mencionar categoria, "
+    "chame get_categories antes para obter o category_id numérico real. "
+    "Nunca invente IDs ou use strings como IDs — apenas integers retornados pelas ferramentas. "
+    "Para operações de escrita, confirme os detalhes com o usuário se houver ambiguidade."
+)
+
+_TOOLS_LIST = [
+    {
+        "type": "function",
+        "function": {
+            "name": t["name"],
+            "description": t["description"],
+            "parameters": t["parameters"],
+        },
+    }
+    for t in TOOL_DEFINITIONS
+]
+
+
+def _provider_clients() -> list[tuple]:
+    """Returns (client, model) pairs ordered by LLM_PROVIDER preference."""
     from groq import AsyncGroq
+    from openai import AsyncOpenAI  # available as transitive dep of groq
 
-    client = AsyncGroq(api_key=settings.GROQ_API_KEY)
-    MODEL = "llama-3.3-70b-versatile"
+    def _groq():
+        return (AsyncGroq(api_key=settings.GROQ_API_KEY), "llama-3.3-70b-versatile")
 
-    system_instruction = (
-        "Você é um assistente financeiro pessoal inteligente e simpático. "
-        "Você tem acesso a ferramentas para CONSULTAR e MODIFICAR as finanças do usuário. "
-        "Responda sempre em português brasileiro de forma clara e objetiva. "
-        "Use dados reais das ferramentas para responder. "
-        "REGRA OBRIGATÓRIA: antes de chamar create_transaction, você DEVE chamar get_accounts "
-        "para obter o account_id numérico real da conta. Se o usuário mencionar categoria, "
-        "chame get_categories antes para obter o category_id numérico real. "
-        "Nunca invente IDs ou use strings como IDs — apenas integers retornados pelas ferramentas. "
-        "Para operações de escrita, confirme os detalhes com o usuário se houver ambiguidade. "
-        f"A data de hoje é {date.today().strftime('%d/%m/%Y')}."
-    )
+    def _cerebras():
+        return (
+            AsyncOpenAI(api_key=settings.CEREBRAS_API_KEY, base_url="https://api.cerebras.ai/v1"),
+            "llama-3.3-70b",
+        )
 
-    # Build messages in OpenAI format
-    messages: list[dict] = [{"role": "system", "content": system_instruction}]
+    def _gemini():
+        return (
+            AsyncOpenAI(
+                api_key=settings.GEMINI_API_KEY,
+                base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+            ),
+            "gemini-2.0-flash",
+        )
+
+    available = {
+        "groq": (_groq, settings.GROQ_API_KEY),
+        "cerebras": (_cerebras, settings.CEREBRAS_API_KEY),
+        "gemini": (_gemini, settings.GEMINI_API_KEY),
+    }
+
+    preferred = settings.LLM_PROVIDER.lower()
+    ordered = [preferred] + [k for k in available if k != preferred]
+
+    return [
+        factory()
+        for name in ordered
+        if (entry := available.get(name)) and entry[1]
+        for factory in [entry[0]]
+    ]
+
+
+def _build_messages(request: ChatRequest) -> list[dict]:
+    system = f"{_SYSTEM_PROMPT}\nA data de hoje é {date.today().strftime('%d/%m/%Y')}."
+    messages: list[dict] = [{"role": "system", "content": system}]
     for msg in request.history:
         messages.append(
             {"role": "user" if msg.role == "user" else "assistant", "content": msg.content}
         )
     messages.append({"role": "user", "content": request.message})
-
-    # Tools in OpenAI format (TOOL_DEFINITIONS parameters are already JSON Schema)
-    tools = [
-        {
-            "type": "function",
-            "function": {
-                "name": t["name"],
-                "description": t["description"],
-                "parameters": t["parameters"],
-            },
-        }
-        for t in TOOL_DEFINITIONS
-    ]
-
-    try:
-        # ── Agentic loop: resolve tool calls (non-streaming) ──────────────────
-        yield _sse("status", json.dumps({"text": "pensando..."}))
-
-        for _ in range(5):
-            response = await client.chat.completions.create(
-                model=MODEL,
-                messages=messages,
-                tools=tools,
-                tool_choice="auto",
-                max_tokens=4096,
-                temperature=0.3,
-            )
-
-            assistant_msg = response.choices[0].message
-            tool_calls = assistant_msg.tool_calls or []
-
-            if not tool_calls:
-                break
-
-            messages.append(assistant_msg)
-
-            for tc in tool_calls:
-                fn_name = tc.function.name
-                fn_args = json.loads(tc.function.arguments or "{}") or {}
-                logger.info("Tool call: %s(%s)", fn_name, fn_args)
-
-                yield _sse("tool_call", json.dumps({"name": fn_name}))
-                result = await _dispatch_tool(fn_name, fn_args, db, user)
-                logger.info("Tool result for %s: %s", fn_name, result[:200])
-
-                if fn_name in WRITE_TOOLS:
-                    yield _sse(
-                        "invalidate",
-                        json.dumps(
-                            {"keys": ["transactions", "accounts", "dashboard", "recurring"]}
-                        ),
-                    )
-
-                messages.append({"role": "tool", "tool_call_id": tc.id, "content": result})
-
-            yield _sse("status", json.dumps({"text": "processando dados..."}))
-
-        # ── Stream final answer token-by-token ────────────────────────────────
-        yield _sse("status", json.dumps({"text": "gerando resposta..."}))
-
-        full_text = ""
-        stream = await client.chat.completions.create(
-            model=MODEL,
-            messages=messages,
-            stream=True,
-            max_tokens=4096,
-            temperature=0.3,
-        )
-        async for chunk in stream:
-            text = chunk.choices[0].delta.content or ""
-            if text:
-                full_text += text
-                yield _sse("delta", json.dumps({"text": text}))
-
-    except Exception as e:
-        logger.exception("Erro no chat stream: %s", e)
-        yield _sse("error", json.dumps({"detail": str(e)}))
-        return
-
-    if not full_text:
-        yield _sse("error", json.dumps({"detail": "Resposta vazia do modelo"}))
-        return
-
-    yield _sse("done", json.dumps({"text": full_text}))
+    return messages
 
 
-async def _chat_sync(request: ChatRequest, db: AsyncSession, user: User) -> dict:
-    """Non-streaming chat for the Telegram bot. Returns {text, invalidate_keys}."""
-    from groq import AsyncGroq
-
-    client = AsyncGroq(api_key=settings.GROQ_API_KEY)
-    MODEL = "llama-3.3-70b-versatile"
-
-    system_instruction = (
-        "Você é um assistente financeiro pessoal inteligente e simpático. "
-        "Você tem acesso a ferramentas para CONSULTAR e MODIFICAR as finanças do usuário. "
-        "Responda sempre em português brasileiro de forma clara e objetiva. "
-        "Use dados reais das ferramentas para responder. "
-        "REGRA OBRIGATÓRIA: antes de chamar create_transaction, você DEVE chamar get_accounts "
-        "para obter o account_id numérico real da conta. Se o usuário mencionar categoria, "
-        "chame get_categories antes para obter o category_id numérico real. "
-        "Nunca invente IDs ou use strings como IDs — apenas integers retornados pelas ferramentas. "
-        "Para operações de escrita, confirme os detalhes com o usuário se houver ambiguidade. "
-        f"A data de hoje é {date.today().strftime('%d/%m/%Y')}."
-    )
-
-    messages: list[dict] = [{"role": "system", "content": system_instruction}]
-    for msg in request.history:
-        messages.append(
-            {"role": "user" if msg.role == "user" else "assistant", "content": msg.content}
-        )
-    messages.append({"role": "user", "content": request.message})
-
-    tools = [
-        {
-            "type": "function",
-            "function": {
-                "name": t["name"],
-                "description": t["description"],
-                "parameters": t["parameters"],
-            },
-        }
-        for t in TOOL_DEFINITIONS
-    ]
-
+async def _run_agentic_loop(
+    client, model: str, messages: list[dict], db: AsyncSession, user: User
+) -> tuple[list[dict], list[str]]:
+    """Non-streaming tool-calling loop. Returns (updated_messages, invalidate_keys)."""
     invalidate_keys: list[str] = []
+    messages = list(messages)
 
     for _ in range(5):
         response = await client.chat.completions.create(
-            model=MODEL,
+            model=model,
             messages=messages,
-            tools=tools,
+            tools=_TOOLS_LIST,
             tool_choice="auto",
             max_tokens=4096,
             temperature=0.3,
@@ -847,20 +777,122 @@ async def _chat_sync(request: ChatRequest, db: AsyncSession, user: User) -> dict
         for tc in tool_calls:
             fn_name = tc.function.name
             fn_args = json.loads(tc.function.arguments or "{}") or {}
-            logger.info("Telegram tool call: %s(%s)", fn_name, fn_args)
+            logger.info("Tool call: %s(%s)", fn_name, fn_args)
             result = await _dispatch_tool(fn_name, fn_args, db, user)
+            logger.info("Tool result for %s: %.200s", fn_name, result)
             if fn_name in WRITE_TOOLS:
                 invalidate_keys = ["transactions", "accounts", "dashboard", "recurring"]
             messages.append({"role": "tool", "tool_call_id": tc.id, "content": result})
 
-    final = await client.chat.completions.create(
-        model=MODEL,
-        messages=messages,
-        max_tokens=4096,
-        temperature=0.3,
-    )
-    text = final.choices[0].message.content or ""
-    return {"text": text, "invalidate_keys": invalidate_keys}
+    return messages, invalidate_keys
+
+
+# ── Chat stream ───────────────────────────────────────────────────────────────
+
+
+async def _chat_stream(
+    request: ChatRequest, db: AsyncSession, user: User
+) -> AsyncGenerator[str, None]:
+    from openai import RateLimitError
+
+    providers = _provider_clients()
+    if not providers:
+        yield _sse("error", json.dumps({"detail": "Nenhuma API key de IA configurada"}))
+        return
+
+    messages = _build_messages(request)
+    yield _sse("status", json.dumps({"text": "pensando..."}))
+
+    client, model = None, None
+    final_messages: list[dict] = messages
+    invalidate_keys: list[str] = []
+
+    for i, (c, m) in enumerate(providers):
+        try:
+            final_messages, invalidate_keys = await _run_agentic_loop(c, m, messages, db, user)
+            client, model = c, m
+            break
+        except RateLimitError:
+            logger.warning("Rate limit em %s, tentando próximo provedor...", m)
+            if i < len(providers) - 1:
+                yield _sse(
+                    "status",
+                    json.dumps({"text": "limite atingido, usando provedor alternativo..."}),
+                )
+            else:
+                yield _sse(
+                    "error",
+                    json.dumps(
+                        {"detail": "Limite de tokens atingido. Tente novamente mais tarde."}
+                    ),
+                )
+                return
+        except Exception as e:
+            logger.exception("Erro no loop agnético: %s", e)
+            yield _sse("error", json.dumps({"detail": str(e)}))
+            return
+
+    if invalidate_keys:
+        yield _sse("invalidate", json.dumps({"keys": invalidate_keys}))
+
+    yield _sse("status", json.dumps({"text": "gerando resposta..."}))
+
+    try:
+        full_text = ""
+        stream = await client.chat.completions.create(
+            model=model,
+            messages=final_messages,
+            stream=True,
+            max_tokens=4096,
+            temperature=0.3,
+        )
+        async for chunk in stream:
+            text = chunk.choices[0].delta.content or ""
+            if text:
+                full_text += text
+                yield _sse("delta", json.dumps({"text": text}))
+    except Exception as e:
+        logger.exception("Erro no stream final: %s", e)
+        yield _sse("error", json.dumps({"detail": str(e)}))
+        return
+
+    if not full_text:
+        yield _sse("error", json.dumps({"detail": "Resposta vazia do modelo"}))
+        return
+
+    yield _sse("done", json.dumps({"text": full_text}))
+
+
+async def _chat_sync(request: ChatRequest, db: AsyncSession, user: User) -> dict:
+    """Non-streaming chat for the Telegram bot. Returns {text, invalidate_keys}."""
+    from openai import RateLimitError
+
+    providers = _provider_clients()
+    if not providers:
+        raise ValueError("Nenhuma API key de IA configurada")
+
+    messages = _build_messages(request)
+    last_error: Exception | None = None
+
+    for c, m in providers:
+        try:
+            final_messages, invalidate_keys = await _run_agentic_loop(c, m, messages, db, user)
+            final = await c.chat.completions.create(
+                model=m,
+                messages=final_messages,
+                max_tokens=4096,
+                temperature=0.3,
+            )
+            return {
+                "text": final.choices[0].message.content or "",
+                "invalidate_keys": invalidate_keys,
+            }
+        except RateLimitError as e:
+            logger.warning("Rate limit em %s, tentando próximo provedor...", m)
+            last_error = e
+            continue
+
+    raise last_error or ValueError("Todos os provedores falharam")
 
 
 # ── Chat endpoints ─────────────────────────────────────────────────────────────

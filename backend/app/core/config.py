@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
     GEMINI_API_KEY: str = ""
     GROQ_API_KEY: str = ""
+    CEREBRAS_API_KEY: str = ""
+    LLM_PROVIDER: str = "cerebras"  # preferred provider: groq | cerebras | gemini
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_BOT_USERNAME: str = ""
     TELEGRAM_INTERNAL_SECRET: str = ""
