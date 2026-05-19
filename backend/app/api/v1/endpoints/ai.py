@@ -323,10 +323,10 @@ def _sse(event: str, data: str) -> str:
 async def _chat_stream(
     request: ChatRequest, db: AsyncSession, user: User
 ) -> AsyncGenerator[str, None]:
-    from google import genai
-    from google.genai import types as gtypes
+    from groq import AsyncGroq
 
-    client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    client = AsyncGroq(api_key=settings.GROQ_API_KEY)
+    MODEL = "llama-3.3-70b-versatile"
 
     system_instruction = (
         "Você é um assistente financeiro pessoal inteligente e simpático. "
@@ -336,107 +336,78 @@ async def _chat_stream(
         f"A data de hoje é {date.today().strftime('%d/%m/%Y')}."
     )
 
-    # Build conversation history
-    contents = []
+    # Build messages in OpenAI format
+    messages: list[dict] = [{"role": "system", "content": system_instruction}]
     for msg in request.history:
-        contents.append(
-            gtypes.Content(
-                role=msg.role,
-                parts=[gtypes.Part(text=msg.content)],
-            )
+        messages.append(
+            {"role": "user" if msg.role == "user" else "assistant", "content": msg.content}
         )
-    contents.append(
-        gtypes.Content(
-            role="user",
-            parts=[gtypes.Part(text=request.message)],
-        )
-    )
+    messages.append({"role": "user", "content": request.message})
 
+    # Tools in OpenAI format (TOOL_DEFINITIONS parameters are already JSON Schema)
     tools = [
-        gtypes.Tool(
-            function_declarations=[
-                gtypes.FunctionDeclaration(
-                    name=t["name"],
-                    description=t["description"],
-                    parameters=gtypes.Schema(**_schema_to_genai(t["parameters"])),
-                )
-                for t in TOOL_DEFINITIONS
-            ]
-        )
+        {
+            "type": "function",
+            "function": {
+                "name": t["name"],
+                "description": t["description"],
+                "parameters": t["parameters"],
+            },
+        }
+        for t in TOOL_DEFINITIONS
     ]
-
-    MODEL = "gemini-2.0-flash"
-    base_config = gtypes.GenerateContentConfig(
-        system_instruction=system_instruction,
-        tools=tools,
-        temperature=0.3,
-    )
 
     try:
         # ── Agentic loop: resolve tool calls (non-streaming) ──────────────────
         yield _sse("status", json.dumps({"text": "pensando..."}))
 
         for _ in range(5):
-            response = await client.aio.models.generate_content(
+            response = await client.chat.completions.create(
                 model=MODEL,
-                contents=contents,
-                config=base_config,
+                messages=messages,
+                tools=tools,
+                tool_choice="auto",
+                max_tokens=4096,
+                temperature=0.3,
             )
 
-            candidate = response.candidates[0]
-            tool_call_parts = [
-                p
-                for p in candidate.content.parts
-                if hasattr(p, "function_call") and p.function_call
-            ]
+            assistant_msg = response.choices[0].message
+            tool_calls = assistant_msg.tool_calls or []
 
-            if not tool_call_parts:
-                break  # no more tool calls — proceed to streaming final answer
+            if not tool_calls:
+                break
 
-            contents.append(candidate.content)
+            messages.append(assistant_msg)
 
-            tool_parts = []
-            for part in tool_call_parts:
-                fc = part.function_call
-                tool_args = dict(fc.args) if fc.args else {}
-                logger.info("Tool call: %s(%s)", fc.name, tool_args)
+            for tc in tool_calls:
+                fn_name = tc.function.name
+                fn_args = json.loads(tc.function.arguments or "{}")
+                logger.info("Tool call: %s(%s)", fn_name, fn_args)
 
-                yield _sse("tool_call", json.dumps({"name": fc.name}))
-                tool_result = await _dispatch_tool(fc.name, tool_args, db, user)
-                logger.info("Tool result for %s: %s", fc.name, tool_result[:200])
+                yield _sse("tool_call", json.dumps({"name": fn_name}))
+                result = await _dispatch_tool(fn_name, fn_args, db, user)
+                logger.info("Tool result for %s: %s", fn_name, result[:200])
 
-                tool_parts.append(
-                    gtypes.Part(
-                        function_response=gtypes.FunctionResponse(
-                            name=fc.name,
-                            response={"result": tool_result},
-                        )
-                    )
-                )
+                messages.append({"role": "tool", "tool_call_id": tc.id, "content": result})
 
-            contents.append(gtypes.Content(role="user", parts=tool_parts))
             yield _sse("status", json.dumps({"text": "processando dados..."}))
 
         # ── Stream final answer token-by-token ────────────────────────────────
         yield _sse("status", json.dumps({"text": "gerando resposta..."}))
 
         full_text = ""
-        stream_config = gtypes.GenerateContentConfig(
-            system_instruction=system_instruction,
+        stream = await client.chat.completions.create(
+            model=MODEL,
+            messages=messages,
+            stream=True,
+            max_tokens=4096,
             temperature=0.3,
         )
-        async for chunk in await client.aio.models.generate_content_stream(
-            model=MODEL,
-            contents=contents,
-            config=stream_config,
-        ):
-            try:
-                text = chunk.text
-                if text:
-                    full_text += text
-                    yield _sse("delta", json.dumps({"text": text}))
-            except Exception:
-                pass
+        async for chunk in stream:
+            text = chunk.choices[0].delta.content or ""
+            if text:
+                full_text += text
+                yield _sse("delta", json.dumps({"text": text}))
 
     except Exception as e:
         logger.exception("Erro no chat stream: %s", e)
@@ -450,28 +421,6 @@ async def _chat_stream(
     yield _sse("done", json.dumps({"text": full_text}))
 
 
-def _schema_to_genai(schema: dict) -> dict:
-    """Convert JSON Schema dict to google-genai Schema kwargs."""
-    result = {"type": schema.get("type", "object").upper()}
-    if "properties" in schema:
-        result["properties"] = {k: _prop_to_genai(v) for k, v in schema["properties"].items()}
-    if "required" in schema:
-        result["required"] = schema["required"]
-    return result
-
-
-def _prop_to_genai(prop: dict):
-    from google.genai import types as gtypes
-
-    type_map = {"string": "STRING", "integer": "INTEGER", "number": "NUMBER", "boolean": "BOOLEAN"}
-    kwargs = {"type": type_map.get(prop.get("type", "string"), "STRING")}
-    if "description" in prop:
-        kwargs["description"] = prop["description"]
-    if "enum" in prop:
-        kwargs["enum"] = prop["enum"]
-    return gtypes.Schema(**kwargs)
-
-
 # ── Chat endpoint ─────────────────────────────────────────────────────────────
 
 
@@ -481,8 +430,8 @@ async def chat(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if not settings.GEMINI_API_KEY:
-        raise HTTPException(status_code=400, detail="GEMINI_API_KEY não configurada no servidor")
+    if not settings.GROQ_API_KEY:
+        raise HTTPException(status_code=400, detail="GROQ_API_KEY não configurada no servidor")
 
     return StreamingResponse(
         _chat_stream(request, db, current_user),

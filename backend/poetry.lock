@@ -818,6 +818,26 @@ docs = ["Sphinx", "furo"]
 test = ["objgraph", "psutil", "setuptools"]
 
 [[package]]
+name = "groq"
+version = "0.13.1"
+description = "The official Python library for the groq API"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "groq-0.13.1-py3-none-any.whl", hash = "sha256:0c5d1d6df93de55de705fe73729b79baaa0c871f7575d6aa64b2962b56101b3e"},
+    {file = "groq-0.13.1.tar.gz", hash = "sha256:588fd5bee984f4eb46ec89552778d5698b9e9614435defef868645c19463cbcc"},
+]
+
+[package.dependencies]
+anyio = ">=3.5.0,<5"
+distro = ">=1.7.0,<2"
+httpx = ">=0.23.0,<1"
+pydantic = ">=1.9.0,<3"
+sniffio = "*"
+typing-extensions = ">=4.10,<5"
+
+[[package]]
 name = "h11"
 version = "0.16.0"
 description = "A pure-Python, bring-your-own-I/O implementation of HTTP/1.1"
@@ -2305,4 +2325,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "88da36d59518a9aaec728c966b3e169365cc3239cee0f627689a1c9522728b00"
+content-hash = "4594b632119150869843e95f21be43d99a0ceaf8e034e0eafb1a0a14cf175282"
