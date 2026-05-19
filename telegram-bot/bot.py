@@ -75,18 +75,59 @@ async def _chat(jwt: str, message: str, history: list[dict]) -> dict:
     return r.json()
 
 
-def _safe_markdown(text: str) -> str:
-    """Remove construções que costumam causar parse error no Telegram Markdown v1."""
-    # Telegram Markdown v1 só suporta *bold*, _italic_, `code`, [link](url)
-    # Remove ### headers → negrito simples
-    import re
-    text = re.sub(r"^#{1,3} (.+)$", r"*\1*", text, flags=re.MULTILINE)
+import re as _re
+
+
+def _md_to_html(text: str) -> str:
+    """Convert AI markdown response to Telegram HTML (parse_mode='HTML')."""
+
+    def _esc(s: str) -> str:
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+    # Protect fenced code blocks
+    code_blocks: list[str] = []
+
+    def _save_block(m: _re.Match) -> str:
+        code_blocks.append(f"<pre>{_esc(m.group(1))}</pre>")
+        return f"\x00B{len(code_blocks)-1}\x00"
+
+    text = _re.sub(r"```(?:\w+)?\n?(.*?)```", _save_block, text, flags=_re.DOTALL)
+
+    # Protect inline code
+    inline_codes: list[str] = []
+
+    def _save_inline(m: _re.Match) -> str:
+        inline_codes.append(f"<code>{_esc(m.group(1))}</code>")
+        return f"\x00I{len(inline_codes)-1}\x00"
+
+    text = _re.sub(r"`([^`\n]+)`", _save_inline, text)
+
+    # Bullet points: convert `* item` / `- item` → `• item` (before italic)
+    text = _re.sub(r"^[*-] (.+)$", r"• \1", text, flags=_re.MULTILINE)
+
+    # Headers → bold
+    text = _re.sub(r"^#{1,6} (.+)$", r"<b>\1</b>", text, flags=_re.MULTILINE)
+
+    # Bold **text** / __text__
+    text = _re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", text, flags=_re.DOTALL)
+    text = _re.sub(r"__(.+?)__", r"<b>\1</b>", text, flags=_re.DOTALL)
+
+    # Italic *text* / _text_ (single markers)
+    text = _re.sub(r"\*([^*\n]+)\*", r"<i>\1</i>", text)
+    text = _re.sub(r"_([^_\n]+)_", r"<i>\1</i>", text)
+
+    # Restore code blocks and inline code
+    for i, b in enumerate(code_blocks):
+        text = text.replace(f"\x00B{i}\x00", b)
+    for i, c in enumerate(inline_codes):
+        text = text.replace(f"\x00I{i}\x00", c)
+
     return text
 
 
 NOT_LINKED_MSG = (
     "⚠️ Sua conta não está vinculada.\n\n"
-    "Acesse o app → *Perfil* → *Vincular ao Telegram* e escaneie o link gerado."
+    "Acesse o app → <b>Perfil</b> → <b>Vincular ao Telegram</b> e escaneie o link gerado."
 )
 
 
@@ -111,8 +152,8 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         else:
             await update.message.reply_text(
                 "❌ Link inválido ou expirado.\n\n"
-                "Gere um novo link pelo app: *Perfil → Vincular ao Telegram*",
-                parse_mode=ParseMode.MARKDOWN,
+                "Gere um novo link pelo app: <b>Perfil → Vincular ao Telegram</b>",
+                parse_mode=ParseMode.HTML,
             )
         return
 
@@ -123,24 +164,24 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "Pode me perguntar qualquer coisa sobre suas finanças, ou use /ajuda."
         )
     else:
-        await update.message.reply_text(NOT_LINKED_MSG, parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text(NOT_LINKED_MSG, parse_mode=ParseMode.HTML)
 
 
 async def cmd_ajuda(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
-        "*Assistente Financeiro*\n\n"
+        "<b>Assistente Financeiro</b>\n\n"
         "Envie qualquer mensagem e responderei com base nos seus dados financeiros.\n\n"
-        "*Exemplos:*\n"
+        "<b>Exemplos:</b>\n"
         "• Qual meu saldo atual?\n"
         "• Quanto gastei esse mês?\n"
         "• Crie uma despesa de R$ 50 de almoço\n"
         "• Mostre minhas últimas transações\n"
         "• Quais são minhas contas?\n\n"
-        "*Comandos:*\n"
+        "<b>Comandos:</b>\n"
         "/ajuda — esta mensagem\n"
         "/limpar — limpa o histórico da conversa\n"
         "/desconectar — desvincula sua conta",
-        parse_mode=ParseMode.MARKDOWN,
+        parse_mode=ParseMode.HTML,
     )
 
 
@@ -177,7 +218,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     jwt = await _resolve_token(chat_id)
     if not jwt:
-        await update.message.reply_text(NOT_LINKED_MSG, parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text(NOT_LINKED_MSG, parse_mode=ParseMode.HTML)
         return
 
     await update.message.chat.send_action(ChatAction.TYPING)
@@ -200,11 +241,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     history.append({"role": "model", "content": reply})
     context.user_data["history"] = history[-MAX_HISTORY:]
 
-    # Tenta enviar com Markdown; cai para texto puro se falhar
     try:
-        await update.message.reply_text(
-            _safe_markdown(reply), parse_mode=ParseMode.MARKDOWN
-        )
+        await update.message.reply_text(_md_to_html(reply), parse_mode=ParseMode.HTML)
     except Exception:
         await update.message.reply_text(reply)
 

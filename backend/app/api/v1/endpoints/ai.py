@@ -2,7 +2,7 @@ import json
 import logging
 import re
 from collections.abc import AsyncGenerator
-from datetime import date
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -14,7 +14,7 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.database import get_db
-from app.models.account import Account
+from app.models.account import Account, AccountType
 from app.models.category import Category
 from app.models.recurring_transaction import RecurringTransaction
 from app.models.transaction import Transaction, TransactionType
@@ -109,6 +109,7 @@ async def _tool_get_transactions(
     date_from: str | None = None,
     date_to: str | None = None,
     type_filter: str | None = None,
+    account_id: int | None = None,
     limit: int = 20,
 ) -> str:
     stmt = (
@@ -124,6 +125,8 @@ async def _tool_get_transactions(
         stmt = stmt.where(Transaction.transaction_date <= date_to)
     if type_filter in ("income", "expense"):
         stmt = stmt.where(Transaction.type == TransactionType(type_filter))
+    if account_id is not None:
+        stmt = stmt.where(Transaction.account_id == account_id)
 
     result = await db.execute(stmt)
     txs = result.scalars().all()
@@ -134,6 +137,7 @@ async def _tool_get_transactions(
             "amount": float(t.amount),
             "type": t.type.value,
             "date": str(t.transaction_date),
+            "account_id": t.account_id,
             "category": t.category.name if t.category else None,
         }
         for t in txs
@@ -217,6 +221,76 @@ async def _tool_get_expense_by_category(
         }
         for r in rows
     ]
+    return json.dumps(data, ensure_ascii=False)
+
+
+async def _tool_get_credit_card_bills(db: AsyncSession, user: User) -> str:
+    """Returns current and next billing cycle totals per credit card."""
+    import calendar as cal_mod
+    from decimal import Decimal as D
+
+    from sqlalchemy import func
+
+    today = date.today()
+
+    acct_result = await db.execute(
+        select(Account).where(
+            Account.user_id == user.id,
+            Account.type == AccountType.credit_card,
+        )
+    )
+    cards = acct_result.scalars().all()
+
+    data = []
+    for card in cards:
+        cd = card.closing_day
+        if cd is None:
+            data.append({"id": card.id, "name": card.name, "note": "sem dia de fechamento"})
+            continue
+
+        year, month = today.year, today.month
+        last_day = cal_mod.monthrange(year, month)[1]
+        current_end = date(year, month, min(cd, last_day))
+
+        prev_month = month - 1 if month > 1 else 12
+        prev_year = year if month > 1 else year - 1
+        prev_last = cal_mod.monthrange(prev_year, prev_month)[1]
+        current_start = date(prev_year, prev_month, min(cd, prev_last)) + timedelta(days=1)
+
+        next_start = current_end + timedelta(days=1)
+        next_month = month + 1 if month < 12 else 1
+        next_year = year if month < 12 else year + 1
+        next_last = cal_mod.monthrange(next_year, next_month)[1]
+        next_end = date(next_year, next_month, min(cd, next_last))
+
+        def _make_query(start: date, end: date, acct_id: int):
+            return select(func.coalesce(func.sum(Transaction.amount), 0)).where(
+                Transaction.account_id == acct_id,
+                Transaction.type == TransactionType.expense,
+                Transaction.transaction_date >= start,
+                Transaction.transaction_date <= end,
+            )
+
+        curr_r = await db.execute(_make_query(current_start, current_end, card.id))
+        next_r = await db.execute(_make_query(next_start, next_end, card.id))
+
+        data.append(
+            {
+                "id": card.id,
+                "name": card.name,
+                "closing_day": cd,
+                "due_day": card.due_day,
+                "current_bill": {
+                    "period": f"{current_start} a {current_end}",
+                    "total": float(D(str(curr_r.scalar()))),
+                },
+                "next_bill": {
+                    "period": f"{next_start} a {next_end}",
+                    "total": float(D(str(next_r.scalar()))),
+                },
+            }
+        )
+
     return json.dumps(data, ensure_ascii=False)
 
 
@@ -496,7 +570,7 @@ TOOL_DEFINITIONS = [
     },
     {
         "name": "get_transactions",
-        "description": "Lista transações do usuário com filtros opcionais de data e tipo.",
+        "description": "Lista transações com filtros opcionais de data, tipo e conta.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -512,6 +586,10 @@ TOOL_DEFINITIONS = [
                     "type": "string",
                     "enum": ["income", "expense"],
                     "description": "Filtrar por tipo",
+                },
+                "account_id": {
+                    "type": "integer",
+                    "description": "Filtrar por conta/cartão específico (ID inteiro)",
                 },
                 "limit": {
                     "type": "integer",
@@ -543,6 +621,15 @@ TOOL_DEFINITIONS = [
             },
             "required": ["year", "month"],
         },
+    },
+    {
+        "name": "get_credit_card_bills",
+        "description": (
+            "Retorna a fatura atual e próxima fatura de cada cartão de crédito, "
+            "com período e valor total de despesas. Use para perguntas sobre faturas, "
+            "próximas cobranças ou quanto vai vencer por cartão."
+        ),
+        "parameters": {"type": "object", "properties": {}, "required": []},
     },
     {
         "name": "get_categories",
@@ -637,7 +724,11 @@ async def _dispatch_tool(name: str, args: dict, db: AsyncSession, user: User) ->
     if name == "get_dashboard":
         return await _tool_get_dashboard(db, user)
     if name == "get_transactions":
+        if "account_id" in args and args["account_id"] is not None:
+            args["account_id"] = int(args["account_id"])
         return await _tool_get_transactions(db, user, **args)
+    if name == "get_credit_card_bills":
+        return await _tool_get_credit_card_bills(db, user)
     if name == "get_monthly_summary":
         return await _tool_get_monthly_summary(db, user, year=args.get("year", today.year))
     if name == "get_expense_by_category":
