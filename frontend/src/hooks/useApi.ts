@@ -4,6 +4,7 @@ import type {
   Account,
   AuthResponse,
   Category,
+  CreditCardBill,
   DashboardSummary,
   InvoiceData,
   MonthlyDetail,
@@ -243,6 +244,12 @@ export const useDashboard = () =>
   useQuery({
     queryKey: ["dashboard"],
     queryFn: () => api.get<DashboardSummary>("/reports/dashboard").then((r) => r.data),
+  });
+
+export const useCreditCardBills = () =>
+  useQuery({
+    queryKey: ["credit-card-bills"],
+    queryFn: () => api.get<CreditCardBill[]>("/reports/credit-card-bills").then((r) => r.data),
   });
 
 export const useMonthlyReport = (year?: number) =>

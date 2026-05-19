@@ -107,6 +107,20 @@ export interface DashboardSummary {
   recurring_this_month: RecurringTransaction[];
 }
 
+export interface BillPeriod {
+  period: string;
+  total: number;
+}
+
+export interface CreditCardBill {
+  id: number;
+  name: string;
+  closing_day: number;
+  due_day: number | null;
+  current_bill: BillPeriod;
+  next_bill: BillPeriod;
+}
+
 export type RecurringFrequency = "monthly" | "yearly";
 
 export interface RecurringTransaction {

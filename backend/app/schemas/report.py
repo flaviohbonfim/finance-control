@@ -6,6 +6,20 @@ from app.schemas.recurring_transaction import RecurringOut
 from app.schemas.transaction import TransactionOut
 
 
+class BillPeriod(BaseModel):
+    period: str
+    total: Decimal
+
+
+class CreditCardBillOut(BaseModel):
+    id: int
+    name: str
+    closing_day: int
+    due_day: int | None = None
+    current_bill: BillPeriod
+    next_bill: BillPeriod
+
+
 class MonthlySummary(BaseModel):
     month: str
     income: Decimal

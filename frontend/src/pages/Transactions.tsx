@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -23,6 +23,36 @@ import Badge from "@/components/ui/Badge";
 const fmt = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
+type Period = "current" | "future" | "past" | "all";
+
+const PERIODS: { key: Period; label: string }[] = [
+  { key: "current", label: "Este mês" },
+  { key: "future", label: "Próximos" },
+  { key: "past", label: "Anteriores" },
+  { key: "all", label: "Tudo" },
+];
+
+function getPeriodDates(period: Period): { date_from?: string; date_to?: string } {
+  const today = new Date();
+  const y = today.getFullYear();
+  const m = today.getMonth() + 1;
+  const firstOfMonth = `${y}-${String(m).padStart(2, "0")}-01`;
+  const lastOfMonth = `${y}-${String(m).padStart(2, "0")}-${new Date(y, m, 0).getDate()}`;
+  const firstOfNextMonth = m === 12
+    ? `${y + 1}-01-01`
+    : `${y}-${String(m + 1).padStart(2, "0")}-01`;
+  const lastOfPrevMonth = m === 1
+    ? `${y - 1}-12-31`
+    : `${y}-${String(m - 1).padStart(2, "0")}-${new Date(y, m - 1, 0).getDate()}`;
+
+  switch (period) {
+    case "current": return { date_from: firstOfMonth, date_to: lastOfMonth };
+    case "future":  return { date_from: firstOfNextMonth };
+    case "past":    return { date_to: lastOfPrevMonth };
+    case "all":     return {};
+  }
+}
+
 interface FormData {
   account_id: number;
   category_id: number | null;
@@ -36,6 +66,7 @@ interface FormData {
 
 export default function Transactions() {
   const [page, setPage] = useState(1);
+  const [period, setPeriod] = useState<Period>("current");
   const [filterType, setFilterType] = useState<string>("");
   const [filterAccount, setFilterAccount] = useState<string>("");
   const [filterCategory, setFilterCategory] = useState<string>("");
@@ -43,6 +74,8 @@ export default function Transactions() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [aiMessage, setAiMessage] = useState<string | null>(null);
+
+  const periodDates = useMemo(() => getPeriodDates(period), [period]);
 
   const { data: accounts = [] } = useAccounts();
   const autoCategorize = useAutoCategorize();
@@ -53,6 +86,7 @@ export default function Transactions() {
     type: filterType || undefined,
     account_id: filterAccount ? Number(filterAccount) : undefined,
     category_id: filterCategory ? Number(filterCategory) : undefined,
+    ...periodDates,
   });
 
   const create = useCreateTransaction();
@@ -106,6 +140,8 @@ export default function Transactions() {
 
   const filteredCategories = categories.filter((c) => !txType || c.type === txType);
 
+  const changePeriod = (p: Period) => { setPeriod(p); setPage(1); };
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -142,6 +178,23 @@ export default function Transactions() {
             <span className="hidden sm:inline">Nova</span>
           </Button>
         </div>
+      </div>
+
+      {/* Period selector */}
+      <div className="flex rounded-xl border border-gray-200 bg-gray-50 p-1 gap-1 w-full sm:w-auto">
+        {PERIODS.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => changePeriod(key)}
+            className={`flex-1 sm:flex-none px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+              period === key
+                ? "bg-white text-primary-700 shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {aiMessage && (

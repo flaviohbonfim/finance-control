@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, Query
@@ -8,13 +8,20 @@ from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.models.account import Account
+from app.models.account import Account, AccountType
 from app.models.category import Category
 from app.models.recurring_transaction import RecurringFrequency, RecurringTransaction
 from app.models.transaction import Transaction, TransactionType
 from app.models.user import User
 from app.schemas.recurring_transaction import RecurringOut
-from app.schemas.report import CategorySummary, DashboardSummary, MonthlyDetail, MonthlySummary
+from app.schemas.report import (
+    BillPeriod,
+    CategorySummary,
+    CreditCardBillOut,
+    DashboardSummary,
+    MonthlyDetail,
+    MonthlySummary,
+)
 from app.schemas.transaction import TransactionOut
 
 router = APIRouter(prefix="/reports", tags=["reports"])
@@ -215,6 +222,75 @@ async def dashboard(
         expense_by_category=expense_by_category,
         recurring_this_month=recurring_this_month,
     )
+
+
+@router.get("/credit-card-bills", response_model=list[CreditCardBillOut])
+async def credit_card_bills(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    import calendar as cal_mod
+
+    today = date.today()
+
+    acct_result = await db.execute(
+        select(Account).where(
+            Account.user_id == current_user.id,
+            Account.type == AccountType.credit_card,
+        )
+    )
+    cards = acct_result.scalars().all()
+
+    bills = []
+    for card in cards:
+        cd = card.closing_day
+        if cd is None:
+            continue
+
+        year, month = today.year, today.month
+        last_day = cal_mod.monthrange(year, month)[1]
+        current_end = date(year, month, min(cd, last_day))
+
+        prev_month = month - 1 if month > 1 else 12
+        prev_year = year if month > 1 else year - 1
+        prev_last = cal_mod.monthrange(prev_year, prev_month)[1]
+        current_start = date(prev_year, prev_month, min(cd, prev_last)) + timedelta(days=1)
+
+        next_start = current_end + timedelta(days=1)
+        next_month = month + 1 if month < 12 else 1
+        next_year = year if month < 12 else year + 1
+        next_last = cal_mod.monthrange(next_year, next_month)[1]
+        next_end = date(next_year, next_month, min(cd, next_last))
+
+        def _sum_q(start: date, end: date, acct_id: int):
+            return select(func.coalesce(func.sum(Transaction.amount), 0)).where(
+                Transaction.account_id == acct_id,
+                Transaction.type == TransactionType.expense,
+                Transaction.transaction_date >= start,
+                Transaction.transaction_date <= end,
+            )
+
+        curr_r = await db.execute(_sum_q(current_start, current_end, card.id))
+        next_r = await db.execute(_sum_q(next_start, next_end, card.id))
+
+        bills.append(
+            CreditCardBillOut(
+                id=card.id,
+                name=card.name,
+                closing_day=cd,
+                due_day=card.due_day,
+                current_bill=BillPeriod(
+                    period=f"{current_start.strftime('%d/%m')} a {current_end.strftime('%d/%m')}",
+                    total=Decimal(str(curr_r.scalar())),
+                ),
+                next_bill=BillPeriod(
+                    period=f"{next_start.strftime('%d/%m')} a {next_end.strftime('%d/%m')}",
+                    total=Decimal(str(next_r.scalar())),
+                ),
+            )
+        )
+
+    return bills
 
 
 @router.get("/monthly", response_model=list[MonthlySummary])
