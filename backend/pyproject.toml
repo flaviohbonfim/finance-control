@@ -20,6 +20,7 @@ python-multipart = "^0.0.12"
 httpx = "^0.28.0"
 google-genai = "^2.4.0"
 groq = "^0.13.0"
+openai = "^1.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.0"
