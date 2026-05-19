@@ -23,6 +23,7 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 
 # ── Chat schemas ──────────────────────────────────────────────────────────────
 
+
 class ChatMessage(BaseModel):
     role: str  # "user" | "model"
     content: str
@@ -34,6 +35,7 @@ class ChatRequest(BaseModel):
 
 
 # ── Tool implementations ──────────────────────────────────────────────────────
+
 
 async def _tool_get_accounts(db: AsyncSession, user: User) -> str:
     result = await db.execute(select(Account).where(Account.user_id == user.id))
@@ -98,7 +100,8 @@ async def _tool_get_dashboard(db: AsyncSession, user: User) -> str:
 
 
 async def _tool_get_transactions(
-    db: AsyncSession, user: User,
+    db: AsyncSession,
+    user: User,
     date_from: str | None = None,
     date_to: str | None = None,
     type_filter: str | None = None,
@@ -170,8 +173,10 @@ async def _tool_get_monthly_summary(db: AsyncSession, user: User, year: int) -> 
 
 
 async def _tool_get_expense_by_category(
-    db: AsyncSession, user: User,
-    year: int, month: int,
+    db: AsyncSession,
+    user: User,
+    year: int,
+    month: int,
 ) -> str:
     import calendar as cal_mod
     from decimal import Decimal as D
@@ -297,7 +302,8 @@ async def _dispatch_tool(name: str, args: dict, db: AsyncSession, user: User) ->
     if name == "get_expense_by_category":
         today = date.today()
         return await _tool_get_expense_by_category(
-            db, user,
+            db,
+            user,
             year=args.get("year", today.year),
             month=args.get("month", today.month),
         )
@@ -305,6 +311,7 @@ async def _dispatch_tool(name: str, args: dict, db: AsyncSession, user: User) ->
 
 
 # ── SSE helpers ───────────────────────────────────────────────────────────────
+
 
 def _sse(event: str, data: str) -> str:
     return f"event: {event}\ndata: {data}\n\n"
@@ -342,16 +349,20 @@ async def _chat_stream(
         )
     )
 
-    tools = [gtypes.Tool(function_declarations=[
-        gtypes.FunctionDeclaration(
-            name=t["name"],
-            description=t["description"],
-            parameters=gtypes.Schema(**_schema_to_genai(t["parameters"])),
+    tools = [
+        gtypes.Tool(
+            function_declarations=[
+                gtypes.FunctionDeclaration(
+                    name=t["name"],
+                    description=t["description"],
+                    parameters=gtypes.Schema(**_schema_to_genai(t["parameters"])),
+                )
+                for t in TOOL_DEFINITIONS
+            ]
         )
-        for t in TOOL_DEFINITIONS
-    ])]
+    ]
 
-    candidate = None
+    final_response = None
     try:
         MAX_TOOL_ROUNDS = 5
         for _ in range(MAX_TOOL_ROUNDS):
@@ -366,13 +377,10 @@ async def _chat_stream(
             )
 
             candidate = response.candidates[0]
-
-            has_tool_call = any(
-                part.function_call is not None
-                for part in candidate.content.parts
-            )
+            has_tool_call = any(part.function_call is not None for part in candidate.content.parts)
 
             if not has_tool_call:
+                final_response = response
                 break
 
             contents.append(candidate.content)
@@ -385,7 +393,6 @@ async def _chat_stream(
                 tool_args = dict(fc.args) if fc.args else {}
 
                 yield _sse("tool_call", json.dumps({"name": fc.name}))
-
                 tool_result = await _dispatch_tool(fc.name, tool_args, db, user)
 
                 tool_parts.append(
@@ -403,11 +410,18 @@ async def _chat_stream(
         yield _sse("error", json.dumps({"detail": f"Erro ao chamar Gemini: {e}"}))
         return
 
-    if candidate is None:
-        yield _sse("error", json.dumps({"detail": "Sem resposta do modelo"}))
+    if final_response is None:
+        yield _sse("error", json.dumps({"detail": "Modelo não gerou resposta de texto"}))
         return
 
-    final_text = "".join(part.text for part in candidate.content.parts if part.text)
+    try:
+        final_text = final_response.text or ""
+    except Exception:
+        final_text = "".join(
+            p.text
+            for p in final_response.candidates[0].content.parts
+            if hasattr(p, "text") and p.text
+        )
 
     if not final_text:
         yield _sse("error", json.dumps({"detail": "Resposta vazia do modelo"}))
@@ -425,9 +439,7 @@ def _schema_to_genai(schema: dict) -> dict:
     """Convert JSON Schema dict to google-genai Schema kwargs."""
     result = {"type": schema.get("type", "object").upper()}
     if "properties" in schema:
-        result["properties"] = {
-            k: _prop_to_genai(v) for k, v in schema["properties"].items()
-        }
+        result["properties"] = {k: _prop_to_genai(v) for k, v in schema["properties"].items()}
     if "required" in schema:
         result["required"] = schema["required"]
     return result
@@ -446,6 +458,7 @@ def _prop_to_genai(prop: dict):
 
 
 # ── Chat endpoint ─────────────────────────────────────────────────────────────
+
 
 @router.post("/chat")
 async def chat(
