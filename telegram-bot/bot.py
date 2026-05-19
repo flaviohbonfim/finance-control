@@ -63,6 +63,18 @@ async def _confirm_link(token: str, chat_id: int) -> bool:
     return False
 
 
+async def _transcribe(jwt: str, audio_bytes: bytes, mime_type: str = "audio/ogg") -> str:
+    """Upload audio to backend and return transcribed text."""
+    async with httpx.AsyncClient(timeout=60) as client:
+        r = await client.post(
+            f"{BACKEND_URL}/api/v1/ai/transcribe",
+            files={"file": ("audio.ogg", audio_bytes, mime_type)},
+            headers={"Authorization": f"Bearer {jwt}"},
+        )
+    r.raise_for_status()
+    return r.json()["text"]
+
+
 async def _chat(jwt: str, message: str, history: list[dict]) -> dict:
     """Chama /ai/chat/sync e retorna {text, invalidate_keys}."""
     async with httpx.AsyncClient(timeout=120) as client:
@@ -76,6 +88,10 @@ async def _chat(jwt: str, message: str, history: list[dict]) -> dict:
 
 
 import re as _re
+
+
+def _esc_html(text: str) -> str:
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 def _md_to_html(text: str) -> str:
@@ -212,6 +228,55 @@ async def cmd_desconectar(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     )
 
 
+async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    chat_id = update.effective_chat.id
+    jwt = await _resolve_token(chat_id)
+    if not jwt:
+        await update.message.reply_text(NOT_LINKED_MSG, parse_mode=ParseMode.HTML)
+        return
+
+    voice = update.message.voice or update.message.audio
+    if not voice:
+        return
+
+    await update.message.chat.send_action(ChatAction.TYPING)
+
+    try:
+        voice_file = await voice.get_file()
+        audio_bytes = bytes(await voice_file.download_as_bytearray())
+        text = await _transcribe(jwt, audio_bytes)
+    except Exception as e:
+        logger.error("transcription error: %s", e)
+        await update.message.reply_text("⚠️ Não consegui transcrever o áudio. Tente novamente.")
+        return
+
+    if not text.strip():
+        await update.message.reply_text("⚠️ Não consegui entender o áudio.")
+        return
+
+    await update.message.reply_text(f"🎙️ <i>{_esc_html(text)}</i>", parse_mode=ParseMode.HTML)
+    await update.message.chat.send_action(ChatAction.TYPING)
+
+    history: list[dict] = context.user_data.get("history", [])
+
+    try:
+        result = await _chat(jwt, text, history)
+    except Exception as e:
+        logger.error("chat error after voice: %s", e)
+        await update.message.reply_text("⚠️ Erro ao processar. Tente novamente.")
+        return
+
+    reply = result.get("text", "Não consegui gerar uma resposta.")
+    history.append({"role": "user", "content": text})
+    history.append({"role": "model", "content": reply})
+    context.user_data["history"] = history[-MAX_HISTORY:]
+
+    try:
+        await update.message.reply_text(_md_to_html(reply), parse_mode=ParseMode.HTML)
+    except Exception:
+        await update.message.reply_text(reply)
+
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     chat_id = update.effective_chat.id
     text = update.message.text or ""
@@ -257,6 +322,7 @@ def main() -> None:
     app.add_handler(CommandHandler("ajuda", cmd_ajuda))
     app.add_handler(CommandHandler("limpar", cmd_limpar))
     app.add_handler(CommandHandler("desconectar", cmd_desconectar))
+    app.add_handler(MessageHandler(filters.VOICE | filters.AUDIO, handle_voice))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     logger.info("Bot iniciado (polling)...")

@@ -4,7 +4,7 @@ import re
 from collections.abc import AsyncGenerator
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -1039,6 +1039,35 @@ async def chat_sync(
 ):
     _check_ai_configured()
     return await _chat_sync(request, db, current_user)
+
+
+@router.post("/transcribe")
+async def transcribe_audio(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    """Transcribe audio file using Groq Whisper. Accepts OGG, MP3, WAV, M4A, etc."""
+    if not settings.GROQ_API_KEY:
+        raise HTTPException(status_code=400, detail="GROQ_API_KEY não configurada")
+
+    from groq import AsyncGroq
+
+    audio_bytes = await file.read()
+    filename = file.filename or "audio.ogg"
+    content_type = file.content_type or "audio/ogg"
+
+    try:
+        client = AsyncGroq(api_key=settings.GROQ_API_KEY)
+        transcription = await client.audio.transcriptions.create(
+            model="whisper-large-v3-turbo",
+            file=(filename, audio_bytes, content_type),
+            language="pt",
+        )
+        logger.info("Transcribed audio (%d bytes): %.100s", len(audio_bytes), transcription.text)
+        return {"text": transcription.text}
+    except Exception as e:
+        logger.exception("Transcription error: %s", e)
+        raise HTTPException(status_code=500, detail=f"Erro na transcrição: {e}")
 
 
 @router.post("/auto-categorize")
