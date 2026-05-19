@@ -127,7 +127,9 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}/frontend:${{ needs.version.outputs.tag }}
             ghcr.io/${{ github.repository }}/frontend:latest
-          build-args: APP_VERSION=${{ needs.version.outputs.version }}
+          build-args: |
+            APP_VERSION=${{ needs.version.outputs.version }}
+            GITHUB_REPO=${{ github.repository }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

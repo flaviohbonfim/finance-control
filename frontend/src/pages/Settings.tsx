@@ -1,9 +1,12 @@
-import { Tag } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Tag, Loader2 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import { themes, getTheme } from "@/themes";
 import { useThemeStore } from "@/store/theme";
 import Card from "@/components/ui/Card";
 
 const APP_VERSION = import.meta.env.VITE_APP_VERSION ?? "0.14.1";
+const GITHUB_REPO = import.meta.env.VITE_GITHUB_REPO ?? "";
 
 function ThemeCard({
   theme,
@@ -54,25 +57,23 @@ function ThemeCard({
   );
 }
 
-const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
-  {
-    version: "0.14.1",
-    date: "2026-05-19",
-    changes: [
-      "Assistente financeiro com IA: criar e deletar transações por chat",
-      "Lançamento de recorrentes via assistente",
-      "Invalidação automática de cache após operações de escrita",
-      "Novos ícones de categoria: pets, saúde, lazer, combustível e mais",
-      "Página de perfil separada acessível pela sidebar",
-      "Versão e changelog visíveis nas configurações",
-    ],
-  },
-];
-
 function VersionSection() {
+  const [notes, setNotes] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!GITHUB_REPO || APP_VERSION === "dev") return;
+    setLoading(true);
+    fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/tags/v${APP_VERSION}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => setNotes(data?.body ?? null))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <Card>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <h2 className="text-sm font-semibold text-gray-900">Versão do app</h2>
         <span className="inline-flex items-center gap-1.5 text-xs font-mono bg-primary-50 text-primary-700 px-2.5 py-1 rounded-full border border-primary-200">
           <Tag size={11} />
@@ -80,24 +81,40 @@ function VersionSection() {
         </span>
       </div>
 
-      <div className="space-y-5">
-        {CHANGELOG.map((release) => (
-          <div key={release.version}>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-semibold text-gray-700">v{release.version}</span>
-              <span className="text-xs text-gray-400">{release.date}</span>
-            </div>
-            <ul className="space-y-1">
-              {release.changes.map((change, i) => (
-                <li key={i} className="flex items-start gap-2 text-xs text-gray-600">
+      {loading && (
+        <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
+          <Loader2 size={12} className="animate-spin" />
+          Carregando notas da versão...
+        </div>
+      )}
+
+      {notes && (
+        <div className="mt-1 text-xs text-gray-600 prose-xs prose-ul:my-1 prose-li:my-0">
+          <ReactMarkdown
+            components={{
+              h2: ({ children }) => (
+                <p className="font-semibold text-gray-800 mb-2">{children}</p>
+              ),
+              ul: ({ children }) => (
+                <ul className="space-y-1 list-none p-0">{children}</ul>
+              ),
+              li: ({ children }) => (
+                <li className="flex items-start gap-2">
                   <span className="mt-1.5 w-1 h-1 rounded-full bg-primary-400 flex-shrink-0" />
-                  {change}
+                  <span>{children}</span>
                 </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
+              ),
+              a: ({ href, children }) => (
+                <a href={href} target="_blank" rel="noreferrer" className="text-primary-600 hover:underline font-mono">
+                  {children}
+                </a>
+              ),
+            }}
+          >
+            {notes}
+          </ReactMarkdown>
+        </div>
+      )}
     </Card>
   );
 }

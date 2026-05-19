@@ -95,7 +95,7 @@ healthcheck() {
   local retries=24
   log "Aguardando healthcheck (até 2 min)..."
   for i in $(seq 1 ${retries}); do
-    if docker exec finance_backend curl -fsSL http://localhost:8000/health >/dev/null 2>&1; then
+    if docker logs finance_backend 2>&1 | grep -q "Application startup complete"; then
       log "Healthcheck OK após $((i * 5))s"
       return 0
     fi

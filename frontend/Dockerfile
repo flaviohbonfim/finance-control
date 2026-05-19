@@ -6,7 +6,9 @@ COPY package*.json ./
 RUN npm install
 COPY . .
 ARG APP_VERSION=dev
+ARG GITHUB_REPO
 ENV VITE_APP_VERSION=$APP_VERSION
+ENV VITE_GITHUB_REPO=$GITHUB_REPO
 RUN npm run build
 
 # Production stage
