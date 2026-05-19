@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   MessageCircle, X, Send, Loader2, Bot, User,
-  Maximize2, Minimize2, Copy, Check,
+  Maximize2, Minimize2, Copy, Check, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { useQueryClient } from "@tanstack/react-query";
@@ -68,6 +68,15 @@ function MarkdownMessage({ content }: { content: string }) {
 export default function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [minimized, setMinimized] = useState(
+    () => localStorage.getItem("chat-minimized") === "true"
+  );
+
+  const setMin = (v: boolean) => {
+    setMinimized(v);
+    localStorage.setItem("chat-minimized", String(v));
+    if (v) setOpen(false);
+  };
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [streaming, setStreaming] = useState(false);
@@ -211,16 +220,42 @@ export default function ChatWidget() {
   const panelW = expanded ? "w-[600px]" : "w-[360px]";
   const panelH = expanded ? "h-[700px]" : "h-[520px]";
 
+  if (minimized) {
+    return (
+      <button
+        onClick={() => setMin(false)}
+        className="fixed right-0 bottom-24 z-50 bg-primary-600 hover:bg-primary-700 text-white rounded-l-xl shadow-lg flex flex-col items-center justify-center gap-1.5 py-4 px-2 transition-colors"
+        aria-label="Mostrar assistente"
+        title="Mostrar assistente"
+      >
+        <MessageCircle size={15} />
+        <ChevronLeft size={13} />
+      </button>
+    );
+  }
+
   return (
     <>
-      {/* Floating button */}
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-primary-600 hover:bg-primary-700 text-white shadow-lg flex items-center justify-center transition-all"
-        aria-label="Abrir assistente financeiro"
-      >
-        {open ? <X size={22} /> : <MessageCircle size={22} />}
-      </button>
+      {/* Floating button + hide control */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
+        {!open && (
+          <button
+            onClick={() => setMin(true)}
+            className="w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-300 flex items-center justify-center shadow transition-colors"
+            title="Ocultar assistente"
+            aria-label="Ocultar assistente"
+          >
+            <ChevronRight size={14} />
+          </button>
+        )}
+        <button
+          onClick={() => setOpen((o) => !o)}
+          className="w-14 h-14 rounded-full bg-primary-600 hover:bg-primary-700 text-white shadow-lg flex items-center justify-center transition-all"
+          aria-label="Abrir assistente financeiro"
+        >
+          {open ? <X size={22} /> : <MessageCircle size={22} />}
+        </button>
+      </div>
 
       {/* Chat panel */}
       {open && (
