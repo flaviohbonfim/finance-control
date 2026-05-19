@@ -16,6 +16,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.models.account import Account
 from app.models.category import Category
+from app.models.recurring_transaction import RecurringTransaction
 from app.models.transaction import Transaction, TransactionType
 from app.models.user import User
 
@@ -219,7 +220,260 @@ async def _tool_get_expense_by_category(
     return json.dumps(data, ensure_ascii=False)
 
 
-# ── Tool definitions for Gemini ───────────────────────────────────────────────
+# ── Phase 2 & 3 tools ────────────────────────────────────────────────────────
+
+
+async def _tool_get_categories(db: AsyncSession, user: User, type_filter: str | None = None) -> str:
+    stmt = select(Category).where(Category.user_id == user.id)
+    if type_filter in ("income", "expense"):
+        stmt = stmt.where(Category.type == type_filter)
+    result = await db.execute(stmt)
+    cats = result.scalars().all()
+    data = [{"id": c.id, "name": c.name, "type": c.type.value, "color": c.color} for c in cats]
+    return json.dumps(data, ensure_ascii=False)
+
+
+async def _tool_get_recurring_transactions(db: AsyncSession, user: User) -> str:
+    result = await db.execute(
+        select(RecurringTransaction)
+        .where(RecurringTransaction.user_id == user.id, RecurringTransaction.active.is_(True))
+        .options(
+            selectinload(RecurringTransaction.category), selectinload(RecurringTransaction.account)
+        )
+        .order_by(RecurringTransaction.due_day)
+    )
+    rts = result.scalars().all()
+    today = date.today()
+    data = [
+        {
+            "id": rt.id,
+            "description": rt.description,
+            "type": rt.type.value,
+            "amount": float(rt.amount) if rt.amount else None,
+            "is_fixed": rt.is_fixed,
+            "frequency": rt.frequency.value,
+            "due_day": rt.due_day,
+            "account": rt.account.name if rt.account else None,
+            "category": rt.category.name if rt.category else None,
+            "launched_this_month": (
+                rt.last_launched_date is not None
+                and rt.last_launched_date.year == today.year
+                and rt.last_launched_date.month == today.month
+            ),
+        }
+        for rt in rts
+    ]
+    return json.dumps(data, ensure_ascii=False)
+
+
+async def _tool_get_monthly_detail(db: AsyncSession, user: User, year: int, month: int) -> str:
+    import calendar as cal_mod
+    from decimal import Decimal as D
+
+    from sqlalchemy import func
+
+    m_start = date(year, month, 1)
+    m_end = date(year, month, cal_mod.monthrange(year, month)[1])
+
+    inc = await db.execute(
+        select(func.coalesce(func.sum(Transaction.amount), 0)).where(
+            Transaction.user_id == user.id,
+            Transaction.type == TransactionType.income,
+            Transaction.transaction_date >= m_start,
+            Transaction.transaction_date <= m_end,
+        )
+    )
+    exp = await db.execute(
+        select(func.coalesce(func.sum(Transaction.amount), 0)).where(
+            Transaction.user_id == user.id,
+            Transaction.type == TransactionType.expense,
+            Transaction.transaction_date >= m_start,
+            Transaction.transaction_date <= m_end,
+        )
+    )
+    income = float(D(str(inc.scalar())))
+    expense = float(D(str(exp.scalar())))
+
+    cat_r = await db.execute(
+        select(Category.name, func.sum(Transaction.amount).label("total"))
+        .select_from(Transaction)
+        .join(Category, Transaction.category_id == Category.id, isouter=True)
+        .where(
+            Transaction.user_id == user.id,
+            Transaction.type == TransactionType.expense,
+            Transaction.transaction_date >= m_start,
+            Transaction.transaction_date <= m_end,
+        )
+        .group_by(Category.name)
+        .order_by(func.sum(Transaction.amount).desc())
+    )
+    by_cat = [
+        {"category": r.name or "Sem categoria", "total": float(D(str(r.total)))}
+        for r in cat_r.all()
+    ]
+
+    top_r = await db.execute(
+        select(Transaction)
+        .where(
+            Transaction.user_id == user.id,
+            Transaction.type == TransactionType.expense,
+            Transaction.transaction_date >= m_start,
+            Transaction.transaction_date <= m_end,
+        )
+        .options(selectinload(Transaction.category))
+        .order_by(Transaction.amount.desc())
+        .limit(10)
+    )
+    top = [
+        {
+            "description": t.description,
+            "amount": float(t.amount),
+            "date": str(t.transaction_date),
+            "category": t.category.name if t.category else None,
+        }
+        for t in top_r.scalars().all()
+    ]
+
+    return json.dumps(
+        {
+            "income": income,
+            "expense": expense,
+            "balance": income - expense,
+            "by_category": by_cat,
+            "top_expenses": top,
+        },
+        ensure_ascii=False,
+    )
+
+
+async def _tool_create_transaction(
+    db: AsyncSession,
+    user: User,
+    account_id: int,
+    type: str,
+    amount: float,
+    description: str,
+    transaction_date: str | None = None,
+    category_id: int | None = None,
+) -> str:
+    from decimal import Decimal as D
+
+    acc = await db.get(Account, account_id)
+    if not acc or acc.user_id != user.id:
+        return json.dumps({"error": "Conta não encontrada"})
+    if type not in ("income", "expense"):
+        return json.dumps({"error": "Tipo deve ser 'income' ou 'expense'"})
+
+    tx_date = date.fromisoformat(transaction_date) if transaction_date else date.today()
+    tx = Transaction(
+        user_id=user.id,
+        account_id=account_id,
+        category_id=category_id,
+        type=TransactionType(type),
+        amount=D(str(amount)),
+        description=description,
+        transaction_date=tx_date,
+    )
+    db.add(tx)
+
+    if type == "income":
+        acc.balance += D(str(amount))
+    else:
+        acc.balance -= D(str(amount))
+
+    await db.commit()
+    await db.refresh(tx)
+    return json.dumps(
+        {
+            "success": True,
+            "id": tx.id,
+            "message": f"Transação '{description}' criada! Saldo de '{acc.name}' atualizado.",
+        },
+        ensure_ascii=False,
+    )
+
+
+async def _tool_delete_transaction(db: AsyncSession, user: User, transaction_id: int) -> str:
+    result = await db.execute(
+        select(Transaction).where(Transaction.id == transaction_id, Transaction.user_id == user.id)
+    )
+    tx = result.scalar_one_or_none()
+    if not tx:
+        return json.dumps({"error": "Transação não encontrada"})
+
+    acc = await db.get(Account, tx.account_id)
+    if acc:
+        if tx.type == TransactionType.income:
+            acc.balance -= tx.amount
+        else:
+            acc.balance += tx.amount
+
+    desc = tx.description
+    await db.delete(tx)
+    await db.commit()
+    return json.dumps(
+        {"success": True, "message": f"Transação '{desc}' deletada com sucesso."},
+        ensure_ascii=False,
+    )
+
+
+async def _tool_launch_recurring(
+    db: AsyncSession, user: User, recurring_id: int, amount: float | None = None
+) -> str:
+    from decimal import Decimal as D
+
+    result = await db.execute(
+        select(RecurringTransaction)
+        .where(RecurringTransaction.id == recurring_id, RecurringTransaction.user_id == user.id)
+        .options(selectinload(RecurringTransaction.account))
+    )
+    rt = result.scalar_one_or_none()
+    if not rt:
+        return json.dumps({"error": "Recorrente não encontrado"})
+
+    if rt.is_fixed:
+        launch_amount = rt.amount
+    else:
+        if amount is None:
+            return json.dumps({"error": "Este lançamento é variável. Informe o valor (amount)."})
+        launch_amount = D(str(amount))
+
+    if launch_amount is None:
+        return json.dumps({"error": "Valor não disponível"})
+
+    acc = await db.get(Account, rt.account_id)
+    if not acc:
+        return json.dumps({"error": "Conta não encontrada"})
+
+    today = date.today()
+    tx = Transaction(
+        user_id=user.id,
+        account_id=rt.account_id,
+        category_id=rt.category_id,
+        type=rt.type,
+        amount=launch_amount,
+        description=rt.description,
+        transaction_date=today,
+    )
+    db.add(tx)
+
+    if rt.type == TransactionType.income:
+        acc.balance += launch_amount
+    else:
+        acc.balance -= launch_amount
+
+    rt.last_launched_date = today
+    await db.commit()
+    return json.dumps(
+        {
+            "success": True,
+            "message": f"'{rt.description}' lançado! Valor: R$ {float(launch_amount):.2f}",
+        },
+        ensure_ascii=False,
+    )
+
+
+# ── Tool definitions ──────────────────────────────────────────────────────────
 
 TOOL_DEFINITIONS = [
     {
@@ -290,10 +544,94 @@ TOOL_DEFINITIONS = [
             "required": ["year", "month"],
         },
     },
+    {
+        "name": "get_categories",
+        "description": "Lista as categorias. Use antes de criar transações para obter IDs válidos.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "type_filter": {
+                    "type": "string",
+                    "enum": ["income", "expense"],
+                    "description": "Filtrar por tipo (opcional)",
+                },
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "get_recurring_transactions",
+        "description": "Lista as transações recorrentes ativas com status de lançamento no mês.",
+        "parameters": {"type": "object", "properties": {}, "required": []},
+    },
+    {
+        "name": "get_monthly_detail",
+        "description": "Detalhamento de um mês: receitas, despesas, breakdown por categoria.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "year": {"type": "integer", "description": "Ano (ex: 2025)"},
+                "month": {"type": "integer", "description": "Mês (1-12)"},
+            },
+            "required": ["year", "month"],
+        },
+    },
+    {
+        "name": "create_transaction",
+        "description": "Cria uma nova transação (receita ou despesa) e atualiza o saldo da conta.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "account_id": {"type": "integer", "description": "ID da conta"},
+                "type": {"type": "string", "enum": ["income", "expense"]},
+                "amount": {"type": "number", "description": "Valor em reais"},
+                "description": {"type": "string", "description": "Descrição da transação"},
+                "transaction_date": {
+                    "type": "string",
+                    "description": "Data no formato YYYY-MM-DD (padrão: hoje)",
+                },
+                "category_id": {
+                    "type": "integer",
+                    "description": "ID da categoria (opcional)",
+                },
+            },
+            "required": ["account_id", "type", "amount", "description"],
+        },
+    },
+    {
+        "name": "delete_transaction",
+        "description": "Deleta uma transação e reverte o saldo da conta. Confirme o ID antes.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "transaction_id": {"type": "integer", "description": "ID da transação"},
+            },
+            "required": ["transaction_id"],
+        },
+    },
+    {
+        "name": "launch_recurring",
+        "description": "Lança uma recorrente no mês atual: cria transação e atualiza saldo.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "recurring_id": {"type": "integer", "description": "ID da recorrente"},
+                "amount": {
+                    "type": "number",
+                    "description": "Valor (obrigatório para recorrentes variáveis)",
+                },
+            },
+            "required": ["recurring_id"],
+        },
+    },
 ]
+
+# Tools that modify data — frontend should invalidate cache after these
+WRITE_TOOLS = {"create_transaction", "delete_transaction", "launch_recurring"}
 
 
 async def _dispatch_tool(name: str, args: dict, db: AsyncSession, user: User) -> str:
+    today = date.today()
     if name == "get_accounts":
         return await _tool_get_accounts(db, user)
     if name == "get_dashboard":
@@ -301,14 +639,26 @@ async def _dispatch_tool(name: str, args: dict, db: AsyncSession, user: User) ->
     if name == "get_transactions":
         return await _tool_get_transactions(db, user, **args)
     if name == "get_monthly_summary":
-        return await _tool_get_monthly_summary(db, user, year=args.get("year", date.today().year))
+        return await _tool_get_monthly_summary(db, user, year=args.get("year", today.year))
     if name == "get_expense_by_category":
-        today = date.today()
         return await _tool_get_expense_by_category(
-            db,
-            user,
-            year=args.get("year", today.year),
-            month=args.get("month", today.month),
+            db, user, year=args.get("year", today.year), month=args.get("month", today.month)
+        )
+    if name == "get_categories":
+        return await _tool_get_categories(db, user, type_filter=args.get("type_filter"))
+    if name == "get_recurring_transactions":
+        return await _tool_get_recurring_transactions(db, user)
+    if name == "get_monthly_detail":
+        return await _tool_get_monthly_detail(
+            db, user, year=args.get("year", today.year), month=args.get("month", today.month)
+        )
+    if name == "create_transaction":
+        return await _tool_create_transaction(db, user, **args)
+    if name == "delete_transaction":
+        return await _tool_delete_transaction(db, user, transaction_id=args["transaction_id"])
+    if name == "launch_recurring":
+        return await _tool_launch_recurring(
+            db, user, recurring_id=args["recurring_id"], amount=args.get("amount")
         )
     return json.dumps({"error": f"Tool desconhecida: {name}"})
 
@@ -330,9 +680,13 @@ async def _chat_stream(
 
     system_instruction = (
         "Você é um assistente financeiro pessoal inteligente e simpático. "
-        "Você tem acesso às ferramentas para consultar as finanças do usuário. "
+        "Você tem acesso a ferramentas para CONSULTAR e MODIFICAR as finanças do usuário. "
         "Responda sempre em português brasileiro de forma clara e objetiva. "
         "Use dados reais das ferramentas para responder. "
+        "Para operações de escrita (criar/deletar transações, lançar recorrentes): "
+        "confirme os detalhes com o usuário antes de executar se houver ambiguidade. "
+        "Ao criar transações, use get_accounts para obter IDs de contas válidos e "
+        "get_categories para obter IDs de categorias válidos quando necessário. "
         f"A data de hoje é {date.today().strftime('%d/%m/%Y')}."
     )
 
@@ -387,6 +741,14 @@ async def _chat_stream(
                 yield _sse("tool_call", json.dumps({"name": fn_name}))
                 result = await _dispatch_tool(fn_name, fn_args, db, user)
                 logger.info("Tool result for %s: %s", fn_name, result[:200])
+
+                if fn_name in WRITE_TOOLS:
+                    yield _sse(
+                        "invalidate",
+                        json.dumps(
+                            {"keys": ["transactions", "accounts", "dashboard", "recurring"]}
+                        ),
+                    )
 
                 messages.append({"role": "tool", "tool_call_id": tc.id, "content": result})
 

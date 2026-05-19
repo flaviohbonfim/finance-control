@@ -4,6 +4,7 @@ import {
   Maximize2, Minimize2, Copy, Check,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/auth";
 
 interface Message {
@@ -71,6 +72,7 @@ export default function ChatWidget() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [toolHint, setToolHint] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const { token } = useAuthStore();
@@ -157,6 +159,10 @@ export default function ChatWidget() {
                   get_expense_by_category: "analisando despesas por categoria...",
                 };
                 setToolHint(hints[parsed.name] ?? "consultando dados...");
+              } else if (currentEvent === "invalidate" && parsed.keys) {
+                (parsed.keys as string[]).forEach((key) =>
+                  queryClient.invalidateQueries({ queryKey: [key] })
+                );
               } else if (currentEvent === "done") {
                 setToolHint(null);
               } else if (currentEvent === "error") {
