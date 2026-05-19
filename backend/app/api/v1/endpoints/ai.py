@@ -884,11 +884,20 @@ async def _run_agentic_loop(
 # ── Chat stream ───────────────────────────────────────────────────────────────
 
 
+def _provider_fallback_errors() -> tuple:
+    """Exception types that mean 'this provider can't handle the request, try the next'."""
+    from groq import BadRequestError as GBad
+    from groq import RateLimitError as GRate
+    from openai import BadRequestError as OBad
+    from openai import RateLimitError as ORate
+
+    return (GRate, GBad, ORate, OBad)
+
+
 async def _chat_stream(
     request: ChatRequest, db: AsyncSession, user: User
 ) -> AsyncGenerator[str, None]:
-    from openai import RateLimitError
-
+    fallback_errors = _provider_fallback_errors()
     providers = _provider_clients()
     if not providers:
         yield _sse("error", json.dumps({"detail": "Nenhuma API key de IA configurada"}))
@@ -908,18 +917,20 @@ async def _chat_stream(
             )
             active_client, active_model = c, m
             break
-        except RateLimitError:
-            logger.warning("Rate limit em %s/%s, tentando próximo provedor...", name, m)
+        except fallback_errors as e:
+            logger.warning(
+                "Provider error (%s) em %s/%s, tentando próximo...", type(e).__name__, name, m
+            )
             if i < len(providers) - 1:
                 yield _sse(
                     "status",
-                    json.dumps({"text": "limite atingido, usando provedor alternativo..."}),
+                    json.dumps({"text": "provedor indisponível, tentando alternativo..."}),
                 )
             else:
                 yield _sse(
                     "error",
                     json.dumps(
-                        {"detail": "Limite de tokens atingido. Tente novamente mais tarde."}
+                        {"detail": "Todos os provedores falharam. Tente novamente mais tarde."}
                     ),
                 )
                 return
@@ -961,8 +972,7 @@ async def _chat_stream(
 
 async def _chat_sync(request: ChatRequest, db: AsyncSession, user: User) -> dict:
     """Non-streaming chat for the Telegram bot. Returns {text, invalidate_keys}."""
-    from openai import RateLimitError
-
+    fallback_errors = _provider_fallback_errors()
     providers = _provider_clients()
     if not providers:
         raise ValueError("Nenhuma API key de IA configurada")
@@ -985,8 +995,10 @@ async def _chat_sync(request: ChatRequest, db: AsyncSession, user: User) -> dict
                 "text": final.choices[0].message.content or "",
                 "invalidate_keys": invalidate_keys,
             }
-        except RateLimitError as e:
-            logger.warning("Rate limit em %s/%s, tentando próximo provedor...", name, m)
+        except fallback_errors as e:
+            logger.warning(
+                "Provider error (%s) em %s/%s, tentando próximo...", type(e).__name__, name, m
+            )
             last_error = e
             continue
 
