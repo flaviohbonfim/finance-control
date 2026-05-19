@@ -296,9 +296,7 @@ async def credit_card_bills(
         if cd is None:
             continue
 
-        current_start, current_end, next_start, next_end = _billing_periods(
-            today, cd, card.due_day
-        )
+        current_start, current_end, next_start, next_end = _billing_periods(today, cd, card.due_day)
 
         def _sum_q(start: date, end: date, acct_id: int):  # noqa: E306
             return select(func.coalesce(func.sum(Transaction.amount), 0)).where(
