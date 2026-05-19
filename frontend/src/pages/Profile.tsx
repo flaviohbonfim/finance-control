@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { CheckCircle, UserCircle } from "lucide-react";
+import { CheckCircle, UserCircle, Send, Unlink } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { useUpdateProfile, useChangePassword } from "@/hooks/useApi";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
+import api from "@/services/api";
 
 interface ProfileForm {
   name: string;
@@ -137,6 +138,96 @@ function PasswordSection() {
   );
 }
 
+function TelegramSection() {
+  const [linked, setLinked] = useState<boolean | null>(null);
+  const [linking, setLinking] = useState(false);
+  const [unlinking, setUnlinking] = useState(false);
+
+  useEffect(() => {
+    api.get("/api/v1/telegram/status").then((r) => setLinked(r.data.linked)).catch(() => {});
+  }, []);
+
+  const handleLink = async () => {
+    setLinking(true);
+    try {
+      const { data } = await api.post("/api/v1/telegram/generate-link");
+      window.open(data.url, "_blank");
+      // Poll status a cada 3s por até 30s para detectar vinculação
+      let attempts = 0;
+      const interval = setInterval(async () => {
+        attempts++;
+        const r = await api.get("/api/v1/telegram/status");
+        if (r.data.linked) {
+          setLinked(true);
+          clearInterval(interval);
+          setLinking(false);
+        } else if (attempts >= 10) {
+          clearInterval(interval);
+          setLinking(false);
+        }
+      }, 3000);
+    } catch {
+      setLinking(false);
+    }
+  };
+
+  const handleUnlink = async () => {
+    setUnlinking(true);
+    try {
+      await api.delete("/api/v1/telegram/unlink");
+      setLinked(false);
+    } finally {
+      setUnlinking(false);
+    }
+  };
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-[#229ED920] flex items-center justify-center flex-shrink-0">
+            <Send size={16} className="text-[#229ED9]" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-900">Telegram</p>
+            <p className="text-xs text-gray-500">
+              {linked === null
+                ? "Verificando..."
+                : linked
+                ? "Conta vinculada — use o bot para acessar suas finanças"
+                : "Vincule para usar o assistente financeiro via Telegram"}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex-shrink-0 ml-4">
+          {linked === null ? null : linked ? (
+            <button
+              onClick={handleUnlink}
+              disabled={unlinking}
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-red-600 transition-colors disabled:opacity-50"
+            >
+              <Unlink size={13} />
+              {unlinking ? "Desvinculando..." : "Desvincular"}
+            </button>
+          ) : (
+            <Button size="sm" onClick={handleLink} loading={linking}>
+              {linking ? "Aguardando..." : "Vincular"}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {linked && (
+        <p className="mt-3 text-xs text-gray-400">
+          Procure pelo bot no Telegram e envie qualquer mensagem para começar.
+          Use <span className="font-mono">/ajuda</span> para ver os comandos disponíveis.
+        </p>
+      )}
+    </Card>
+  );
+}
+
 export default function Profile() {
   const { user } = useAuthStore();
 
@@ -154,6 +245,7 @@ export default function Profile() {
 
       <ProfileSection />
       <PasswordSection />
+      <TelegramSection />
     </div>
   );
 }

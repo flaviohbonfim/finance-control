@@ -787,7 +787,83 @@ async def _chat_stream(
     yield _sse("done", json.dumps({"text": full_text}))
 
 
-# ── Chat endpoint ─────────────────────────────────────────────────────────────
+async def _chat_sync(request: ChatRequest, db: AsyncSession, user: User) -> dict:
+    """Non-streaming chat for the Telegram bot. Returns {text, invalidate_keys}."""
+    from groq import AsyncGroq
+
+    client = AsyncGroq(api_key=settings.GROQ_API_KEY)
+    MODEL = "llama-3.3-70b-versatile"
+
+    system_instruction = (
+        "Você é um assistente financeiro pessoal inteligente e simpático. "
+        "Você tem acesso a ferramentas para CONSULTAR e MODIFICAR as finanças do usuário. "
+        "Responda sempre em português brasileiro de forma clara e objetiva. "
+        "Use dados reais das ferramentas para responder. "
+        "REGRA OBRIGATÓRIA: antes de chamar create_transaction, você DEVE chamar get_accounts "
+        "para obter o account_id numérico real da conta. Se o usuário mencionar categoria, "
+        "chame get_categories antes para obter o category_id numérico real. "
+        "Nunca invente IDs ou use strings como IDs — apenas integers retornados pelas ferramentas. "
+        "Para operações de escrita, confirme os detalhes com o usuário se houver ambiguidade. "
+        f"A data de hoje é {date.today().strftime('%d/%m/%Y')}."
+    )
+
+    messages: list[dict] = [{"role": "system", "content": system_instruction}]
+    for msg in request.history:
+        messages.append(
+            {"role": "user" if msg.role == "user" else "assistant", "content": msg.content}
+        )
+    messages.append({"role": "user", "content": request.message})
+
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": t["name"],
+                "description": t["description"],
+                "parameters": t["parameters"],
+            },
+        }
+        for t in TOOL_DEFINITIONS
+    ]
+
+    invalidate_keys: list[str] = []
+
+    for _ in range(5):
+        response = await client.chat.completions.create(
+            model=MODEL,
+            messages=messages,
+            tools=tools,
+            tool_choice="auto",
+            max_tokens=4096,
+            temperature=0.3,
+        )
+        assistant_msg = response.choices[0].message
+        tool_calls = assistant_msg.tool_calls or []
+
+        if not tool_calls:
+            break
+
+        messages.append(assistant_msg)
+        for tc in tool_calls:
+            fn_name = tc.function.name
+            fn_args = json.loads(tc.function.arguments or "{}") or {}
+            logger.info("Telegram tool call: %s(%s)", fn_name, fn_args)
+            result = await _dispatch_tool(fn_name, fn_args, db, user)
+            if fn_name in WRITE_TOOLS:
+                invalidate_keys = ["transactions", "accounts", "dashboard", "recurring"]
+            messages.append({"role": "tool", "tool_call_id": tc.id, "content": result})
+
+    final = await client.chat.completions.create(
+        model=MODEL,
+        messages=messages,
+        max_tokens=4096,
+        temperature=0.3,
+    )
+    text = final.choices[0].message.content or ""
+    return {"text": text, "invalidate_keys": invalidate_keys}
+
+
+# ── Chat endpoints ─────────────────────────────────────────────────────────────
 
 
 @router.post("/chat")
@@ -808,6 +884,17 @@ async def chat(
             "Connection": "keep-alive",
         },
     )
+
+
+@router.post("/chat/sync")
+async def chat_sync(
+    request: ChatRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not settings.GROQ_API_KEY:
+        raise HTTPException(status_code=400, detail="GROQ_API_KEY não configurada no servidor")
+    return await _chat_sync(request, db, current_user)
 
 
 @router.post("/auto-categorize")

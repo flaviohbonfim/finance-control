@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
     GEMINI_API_KEY: str = ""
     GROQ_API_KEY: str = ""
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_BOT_USERNAME: str = ""
+    TELEGRAM_INTERNAL_SECRET: str = ""
 
     @property
     def cors_origins_list(self) -> list[str]:

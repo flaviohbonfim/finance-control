@@ -133,6 +133,18 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Build & push telegram-bot image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./telegram-bot
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/telegram-bot:${{ needs.version.outputs.tag }}
+            ghcr.io/${{ github.repository }}/telegram-bot:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest

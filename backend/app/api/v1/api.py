@@ -7,6 +7,7 @@ from app.api.v1.endpoints import (
     categories,
     recurring_transactions,
     reports,
+    telegram,
     transactions,
 )
 
@@ -18,3 +19,4 @@ router.include_router(recurring_transactions.router)
 router.include_router(reports.router)
 router.include_router(transactions.router)
 router.include_router(ai.router)
+router.include_router(telegram.router)

@@ -14,3 +14,13 @@ services:
     restart: always
     ports:
       - "3000:80"
+
+  telegram-bot:
+    image: ghcr.io/${GITHUB_REPOSITORY}/telegram-bot:${RELEASE_TAG}
+    container_name: finance_telegram_bot
+    restart: always
+    env_file: .env.prod
+    environment:
+      - BACKEND_URL=http://backend:8000
+    depends_on:
+      - backend
