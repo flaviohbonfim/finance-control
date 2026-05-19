@@ -373,11 +373,16 @@ async def _chat_stream(
                     system_instruction=system_instruction,
                     tools=tools,
                     temperature=0.3,
+                    thinking_config=gtypes.ThinkingConfig(thinking_budget=0),
                 ),
             )
 
             candidate = response.candidates[0]
-            has_tool_call = any(part.function_call is not None for part in candidate.content.parts)
+            has_tool_call = any(
+                part.function_call is not None
+                for part in candidate.content.parts
+                if hasattr(part, "function_call") and part.function_call is not None
+            )
 
             if not has_tool_call:
                 final_response = response
@@ -414,14 +419,25 @@ async def _chat_stream(
         yield _sse("error", json.dumps({"detail": "Modelo não gerou resposta de texto"}))
         return
 
+    # Extract text — skip thinking parts (type="thinking"), keep only regular text parts
+    final_text = ""
     try:
-        final_text = final_response.text or ""
+        for p in final_response.candidates[0].content.parts:
+            if not hasattr(p, "text") or not p.text:
+                continue
+            # thinking parts have a "thought" attribute set to True in some SDK versions
+            if getattr(p, "thought", False):
+                continue
+            final_text += p.text
     except Exception:
-        final_text = "".join(
-            p.text
-            for p in final_response.candidates[0].content.parts
-            if hasattr(p, "text") and p.text
-        )
+        pass
+
+    if not final_text:
+        # last resort: use SDK convenience property
+        try:
+            final_text = final_response.text or ""
+        except Exception:
+            pass
 
     if not final_text:
         yield _sse("error", json.dumps({"detail": "Resposta vazia do modelo"}))

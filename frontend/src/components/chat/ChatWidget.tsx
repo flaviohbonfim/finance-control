@@ -135,6 +135,7 @@ export default function ChatWidget() {
             currentEvent = line.slice(7).trim();
           } else if (line.startsWith("data: ")) {
             const data = line.slice(6);
+            let sseError: string | null = null;
             try {
               const parsed = JSON.parse(data);
               if (currentEvent === "delta" && parsed.text) {
@@ -157,11 +158,12 @@ export default function ChatWidget() {
               } else if (currentEvent === "done") {
                 setToolHint(null);
               } else if (currentEvent === "error") {
-                throw new Error(parsed.detail ?? "Erro no servidor");
+                sseError = parsed.detail ?? "Erro no servidor";
               }
             } catch {
-              // skip malformed lines
+              // skip malformed JSON
             }
+            if (sseError) throw new Error(sseError);
             currentEvent = "";
           } else if (line === "") {
             currentEvent = "";
