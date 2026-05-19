@@ -701,21 +701,23 @@ _TOOLS_LIST = [
 
 
 def _provider_clients() -> list[tuple]:
-    """Returns (client, model) pairs ordered by LLM_PROVIDER preference."""
+    """Returns (name, client, model) triples ordered by LLM_PROVIDER preference."""
     from groq import AsyncGroq
-    from openai import AsyncOpenAI  # available as transitive dep of groq
+    from openai import AsyncOpenAI
 
     def _groq():
-        return (AsyncGroq(api_key=settings.GROQ_API_KEY), "llama-3.3-70b-versatile")
+        return ("groq", AsyncGroq(api_key=settings.GROQ_API_KEY), "llama-3.3-70b-versatile")
 
     def _cerebras():
         return (
+            "cerebras",
             AsyncOpenAI(api_key=settings.CEREBRAS_API_KEY, base_url="https://api.cerebras.ai/v1"),
             "gpt-oss-120b",
         )
 
     def _gemini():
         return (
+            "gemini",
             AsyncOpenAI(
                 api_key=settings.GEMINI_API_KEY,
                 base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
@@ -752,9 +754,10 @@ def _build_messages(request: ChatRequest) -> list[dict]:
 
 
 async def _run_agentic_loop(
-    client, model: str, messages: list[dict], db: AsyncSession, user: User
+    provider: str, client, model: str, messages: list[dict], db: AsyncSession, user: User
 ) -> tuple[list[dict], list[str]]:
     """Non-streaming tool-calling loop. Returns (updated_messages, invalidate_keys)."""
+    logger.info("Usando provedor: %s (modelo: %s)", provider, model)
     invalidate_keys: list[str] = []
     messages = list(messages)
 
@@ -803,17 +806,19 @@ async def _chat_stream(
     messages = _build_messages(request)
     yield _sse("status", json.dumps({"text": "pensando..."}))
 
-    client, model = None, None
+    active_client, active_model = None, None
     final_messages: list[dict] = messages
     invalidate_keys: list[str] = []
 
-    for i, (c, m) in enumerate(providers):
+    for i, (name, c, m) in enumerate(providers):
         try:
-            final_messages, invalidate_keys = await _run_agentic_loop(c, m, messages, db, user)
-            client, model = c, m
+            final_messages, invalidate_keys = await _run_agentic_loop(
+                name, c, m, messages, db, user
+            )
+            active_client, active_model = c, m
             break
         except RateLimitError:
-            logger.warning("Rate limit em %s, tentando próximo provedor...", m)
+            logger.warning("Rate limit em %s/%s, tentando próximo provedor...", name, m)
             if i < len(providers) - 1:
                 yield _sse(
                     "status",
@@ -828,7 +833,7 @@ async def _chat_stream(
                 )
                 return
         except Exception as e:
-            logger.exception("Erro no loop agnético: %s", e)
+            logger.exception("Erro no loop agêntico (%s/%s): %s", name, m, e)
             yield _sse("error", json.dumps({"detail": str(e)}))
             return
 
@@ -839,8 +844,8 @@ async def _chat_stream(
 
     try:
         full_text = ""
-        stream = await client.chat.completions.create(
-            model=model,
+        stream = await active_client.chat.completions.create(
+            model=active_model,
             messages=final_messages,
             stream=True,
             max_tokens=4096,
@@ -874,9 +879,11 @@ async def _chat_sync(request: ChatRequest, db: AsyncSession, user: User) -> dict
     messages = _build_messages(request)
     last_error: Exception | None = None
 
-    for c, m in providers:
+    for name, c, m in providers:
         try:
-            final_messages, invalidate_keys = await _run_agentic_loop(c, m, messages, db, user)
+            final_messages, invalidate_keys = await _run_agentic_loop(
+                name, c, m, messages, db, user
+            )
             final = await c.chat.completions.create(
                 model=m,
                 messages=final_messages,
@@ -888,7 +895,7 @@ async def _chat_sync(request: ChatRequest, db: AsyncSession, user: User) -> dict
                 "invalidate_keys": invalidate_keys,
             }
         except RateLimitError as e:
-            logger.warning("Rate limit em %s, tentando próximo provedor...", m)
+            logger.warning("Rate limit em %s/%s, tentando próximo provedor...", name, m)
             last_error = e
             continue
 
@@ -898,15 +905,18 @@ async def _chat_sync(request: ChatRequest, db: AsyncSession, user: User) -> dict
 # ── Chat endpoints ─────────────────────────────────────────────────────────────
 
 
+def _check_ai_configured() -> None:
+    if not any([settings.GROQ_API_KEY, settings.CEREBRAS_API_KEY, settings.GEMINI_API_KEY]):
+        raise HTTPException(status_code=400, detail="Nenhuma API key de IA configurada")
+
+
 @router.post("/chat")
 async def chat(
     request: ChatRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if not settings.GROQ_API_KEY:
-        raise HTTPException(status_code=400, detail="GROQ_API_KEY não configurada no servidor")
-
+    _check_ai_configured()
     return StreamingResponse(
         _chat_stream(request, db, current_user),
         media_type="text/event-stream",
@@ -924,8 +934,7 @@ async def chat_sync(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if not settings.GROQ_API_KEY:
-        raise HTTPException(status_code=400, detail="GROQ_API_KEY não configurada no servidor")
+    _check_ai_configured()
     return await _chat_sync(request, db, current_user)
 
 

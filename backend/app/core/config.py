@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     GROQ_API_KEY: str = ""
     CEREBRAS_API_KEY: str = ""
-    LLM_PROVIDER: str = "cerebras"  # preferred provider: groq | cerebras | gemini
+    LLM_PROVIDER: str = "gemini"  # preferred provider: groq | cerebras | gemini
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_BOT_USERNAME: str = ""
     TELEGRAM_INTERNAL_SECRET: str = ""
