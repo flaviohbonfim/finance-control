@@ -236,7 +236,7 @@ export default function ChatWidget() {
             </div>
             <button
               onClick={() => setExpanded((e) => !e)}
-              className="p-1 rounded hover:bg-primary-500 transition-colors"
+              className="hidden sm:block p-1 rounded hover:bg-primary-500 transition-colors"
               title={expanded ? "Diminuir" : "Expandir"}
             >
               {expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}

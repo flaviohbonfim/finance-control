@@ -63,8 +63,16 @@ export default function Sidebar({ onClose }: SidebarProps) {
 
       {/* User */}
       <div className="px-3 py-4 border-t border-gray-100">
-        <div className="flex items-center gap-3 px-3 py-2 mb-2">
-          <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
+        <NavLink
+          to="/profile"
+          onClick={onClose}
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2 mb-2 rounded-lg transition-colors ${
+              isActive ? "bg-primary-50" : "hover:bg-gray-50"
+            }`
+          }
+        >
+          <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
             <span className="text-primary-700 text-sm font-semibold">
               {user?.name?.charAt(0).toUpperCase()}
             </span>
@@ -73,7 +81,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
             <p className="text-sm font-medium text-gray-900 truncate">{user?.name}</p>
             <p className="text-xs text-gray-500 truncate">{user?.email}</p>
           </div>
-        </div>
+        </NavLink>
         <button
           onClick={logout}
           className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-red-50 hover:text-red-700 transition-colors"

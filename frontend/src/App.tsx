@@ -12,6 +12,7 @@ import Recorrentes from "@/pages/Recorrentes";
 import Transactions from "@/pages/Transactions";
 import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
+import Profile from "@/pages/Profile";
 import ChatWidget from "@/components/chat/ChatWidget";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -54,6 +55,7 @@ export default function App() {
           <Route path="categories" element={<Categories />} />
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="profile" element={<Profile />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

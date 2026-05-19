@@ -1,13 +1,9 @@
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { CheckCircle } from "lucide-react";
+import { Tag } from "lucide-react";
 import { themes, getTheme } from "@/themes";
 import { useThemeStore } from "@/store/theme";
-import { useAuthStore } from "@/store/auth";
-import { useUpdateProfile, useChangePassword } from "@/hooks/useApi";
 import Card from "@/components/ui/Card";
-import Input from "@/components/ui/Input";
-import Button from "@/components/ui/Button";
+
+const APP_VERSION = import.meta.env.VITE_APP_VERSION ?? "0.14.1";
 
 function ThemeCard({
   theme,
@@ -58,132 +54,50 @@ function ThemeCard({
   );
 }
 
-interface ProfileForm {
-  name: string;
-  email: string;
-}
+const CHANGELOG: { version: string; date: string; changes: string[] }[] = [
+  {
+    version: "0.14.1",
+    date: "2026-05-19",
+    changes: [
+      "Assistente financeiro com IA: criar e deletar transações por chat",
+      "Lançamento de recorrentes via assistente",
+      "Invalidação automática de cache após operações de escrita",
+      "Novos ícones de categoria: pets, saúde, lazer, combustível e mais",
+      "Página de perfil separada acessível pela sidebar",
+      "Versão e changelog visíveis nas configurações",
+    ],
+  },
+];
 
-interface PasswordForm {
-  current_password: string;
-  new_password: string;
-  confirm_password: string;
-}
-
-function ProfileSection() {
-  const { user, updateUser } = useAuthStore();
-  const updateProfile = useUpdateProfile();
-  const [success, setSuccess] = useState(false);
-
-  const { register, handleSubmit, formState: { errors } } = useForm<ProfileForm>({
-    defaultValues: { name: user?.name ?? "", email: user?.email ?? "" },
-  });
-
-  const onSubmit = async (data: ProfileForm) => {
-    const updated = await updateProfile.mutateAsync(data);
-    updateUser(updated);
-    setSuccess(true);
-    setTimeout(() => setSuccess(false), 3000);
-  };
-
+function VersionSection() {
   return (
     <Card>
-      <h2 className="text-sm font-semibold text-gray-900 mb-4">Dados pessoais</h2>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-w-sm">
-        <Input
-          label="Nome"
-          error={errors.name?.message}
-          {...register("name", { required: "Nome obrigatório" })}
-        />
-        <Input
-          label="Email"
-          type="email"
-          error={errors.email?.message}
-          {...register("email", { required: "Email obrigatório" })}
-        />
-        <div className="flex items-center gap-3">
-          <Button type="submit" size="sm" loading={updateProfile.isPending}>
-            Salvar alterações
-          </Button>
-          {success && (
-            <span className="flex items-center gap-1.5 text-sm text-green-600">
-              <CheckCircle size={15} /> Salvo com sucesso
-            </span>
-          )}
-        </div>
-        {updateProfile.isError && (
-          <p className="text-sm text-red-600">
-            {(updateProfile.error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? "Erro ao salvar"}
-          </p>
-        )}
-      </form>
-    </Card>
-  );
-}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm font-semibold text-gray-900">Versão do app</h2>
+        <span className="inline-flex items-center gap-1.5 text-xs font-mono bg-primary-50 text-primary-700 px-2.5 py-1 rounded-full border border-primary-200">
+          <Tag size={11} />
+          v{APP_VERSION}
+        </span>
+      </div>
 
-function PasswordSection() {
-  const changePassword = useChangePassword();
-  const [success, setSuccess] = useState(false);
-
-  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<PasswordForm>();
-  const newPwd = watch("new_password");
-
-  const onSubmit = async (data: PasswordForm) => {
-    await changePassword.mutateAsync({
-      current_password: data.current_password,
-      new_password: data.new_password,
-    });
-    reset();
-    setSuccess(true);
-    setTimeout(() => setSuccess(false), 3000);
-  };
-
-  return (
-    <Card>
-      <h2 className="text-sm font-semibold text-gray-900 mb-4">Alterar senha</h2>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-w-sm">
-        <Input
-          label="Senha atual"
-          type="password"
-          placeholder="••••••••"
-          error={errors.current_password?.message}
-          {...register("current_password", { required: "Informe a senha atual" })}
-        />
-        <Input
-          label="Nova senha"
-          type="password"
-          placeholder="Mínimo 6 caracteres"
-          error={errors.new_password?.message}
-          {...register("new_password", {
-            required: "Informe a nova senha",
-            minLength: { value: 6, message: "Mínimo 6 caracteres" },
-          })}
-        />
-        <Input
-          label="Confirmar nova senha"
-          type="password"
-          placeholder="Repita a nova senha"
-          error={errors.confirm_password?.message}
-          {...register("confirm_password", {
-            required: "Confirme a nova senha",
-            validate: (v) => v === newPwd || "As senhas não coincidem",
-          })}
-        />
-        <div className="flex items-center gap-3">
-          <Button type="submit" size="sm" loading={changePassword.isPending}>
-            Alterar senha
-          </Button>
-          {success && (
-            <span className="flex items-center gap-1.5 text-sm text-green-600">
-              <CheckCircle size={15} /> Senha alterada
-            </span>
-          )}
-        </div>
-        {changePassword.isError && (
-          <p className="text-sm text-red-600">
-            {(changePassword.error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? "Erro ao alterar senha"}
-          </p>
-        )}
-      </form>
+      <div className="space-y-5">
+        {CHANGELOG.map((release) => (
+          <div key={release.version}>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xs font-semibold text-gray-700">v{release.version}</span>
+              <span className="text-xs text-gray-400">{release.date}</span>
+            </div>
+            <ul className="space-y-1">
+              {release.changes.map((change, i) => (
+                <li key={i} className="flex items-start gap-2 text-xs text-gray-600">
+                  <span className="mt-1.5 w-1 h-1 rounded-full bg-primary-400 flex-shrink-0" />
+                  {change}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
     </Card>
   );
 }
@@ -196,11 +110,8 @@ export default function Settings() {
     <div className="space-y-6 max-w-3xl">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Configurações</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Gerencie seu perfil e personalize a aparência do app</p>
+        <p className="text-sm text-gray-500 mt-0.5">Personalize a aparência do app</p>
       </div>
-
-      <ProfileSection />
-      <PasswordSection />
 
       <Card>
         <h2 className="text-sm font-semibold text-gray-900 mb-4">Temas</h2>
@@ -282,6 +193,8 @@ export default function Settings() {
           </div>
         </div>
       </Card>
+
+      <VersionSection />
     </div>
   );
 }

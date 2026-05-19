@@ -3,6 +3,9 @@ import { useForm } from "react-hook-form";
 import {
   Plus, Pencil, Trash2, Tag, Home, Car, Utensils, Heart,
   BookOpen, Music, ShoppingCart, Briefcase, Gift, Plane, Dumbbell,
+  PawPrint, Stethoscope, Gamepad2, Coffee, Fuel, GraduationCap,
+  Smartphone, ShoppingBasket, Tv, Zap, Baby, Wrench, Shirt, Wine,
+  PiggyBank, Bus, Pill, Scissors, Wallet, Pizza, TreePine,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -32,6 +35,27 @@ const ICON_MAP: Record<string, LucideIcon> = {
   gift: Gift,
   plane: Plane,
   dumbbell: Dumbbell,
+  paw: PawPrint,
+  stethoscope: Stethoscope,
+  pill: Pill,
+  gamepad: Gamepad2,
+  coffee: Coffee,
+  fuel: Fuel,
+  graduation: GraduationCap,
+  smartphone: Smartphone,
+  basket: ShoppingBasket,
+  tv: Tv,
+  zap: Zap,
+  baby: Baby,
+  wrench: Wrench,
+  shirt: Shirt,
+  wine: Wine,
+  "piggy-bank": PiggyBank,
+  bus: Bus,
+  scissors: Scissors,
+  wallet: Wallet,
+  pizza: Pizza,
+  tree: TreePine,
 };
 
 const ICONS = Object.keys(ICON_MAP);
