@@ -292,7 +292,7 @@ function CreditCardBillsSection({ bills }: { bills: CreditCardBill[] }) {
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-gray-900">Faturas dos Cartões</h2>
         <div className="text-right">
-          <p className="text-xs text-gray-400">Próxima fatura total</p>
+          <p className="text-xs text-gray-400">Próximo ciclo (total)</p>
           <p className="text-sm font-bold text-red-500">{fmt(totalNext)}</p>
         </div>
       </div>
@@ -301,11 +301,11 @@ function CreditCardBillsSection({ bills }: { bills: CreditCardBill[] }) {
       <Card className="bg-gray-50 border-0">
         <div className="flex justify-between text-sm">
           <div>
-            <p className="text-xs text-gray-500 mb-0.5">Fatura atual (em aberto)</p>
+            <p className="text-xs text-gray-500 mb-0.5">Ciclo atual (total)</p>
             <p className="font-semibold text-gray-700">{fmt(totalCurrent)}</p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-gray-500 mb-0.5">Próxima fatura</p>
+            <p className="text-xs text-gray-500 mb-0.5">Próximo ciclo (total)</p>
             <p className="font-semibold text-red-500">{fmt(totalNext)}</p>
           </div>
         </div>
@@ -323,11 +323,11 @@ function CreditCardBillsSection({ bills }: { bills: CreditCardBill[] }) {
 
             <div className="space-y-2">
               <div>
-                <p className="text-xs text-gray-400 mb-0.5">Fatura atual · {bill.current_bill.period}</p>
+                <p className="text-xs text-gray-400 mb-0.5">Ciclo atual · {bill.current_bill.period}</p>
                 <p className="text-base font-bold text-gray-700">{fmt(Number(bill.current_bill.total))}</p>
               </div>
               <div className="pt-2 border-t border-gray-100">
-                <p className="text-xs text-gray-400 mb-0.5">Próxima fatura · {bill.next_bill.period}</p>
+                <p className="text-xs text-gray-400 mb-0.5">Próximo ciclo · {bill.next_bill.period}</p>
                 <p className="text-base font-bold text-red-500">{fmt(Number(bill.next_bill.total))}</p>
               </div>
             </div>
@@ -401,7 +401,7 @@ export default function Dashboard() {
         /* ── Mês Atual ─────────────────────────────────────────── */
         <>
           {/* Stats: income / expense / balance */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <StatCard
               label="Receitas do Mês"
               value={Number(data.monthly_income)}
