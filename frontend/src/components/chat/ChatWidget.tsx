@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   MessageCircle, X, Send, Loader2, Bot, User,
-  Maximize2, Minimize2, Copy, Check, ChevronLeft, ChevronRight,
+  Maximize2, Minimize2, Copy, Check, ChevronLeft,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { useQueryClient } from "@tanstack/react-query";
@@ -236,16 +236,16 @@ export default function ChatWidget() {
 
   return (
     <>
-      {/* Floating button + hide control */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
+      {/* Floating button + badge hide */}
+      <div className="fixed bottom-6 right-6 z-50">
         {!open && (
           <button
             onClick={() => setMin(true)}
-            className="w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-300 flex items-center justify-center shadow transition-colors"
+            className="absolute -top-1.5 -right-1.5 z-10 w-5 h-5 rounded-full bg-gray-500 hover:bg-gray-400 text-white flex items-center justify-center shadow-md transition-colors"
             title="Ocultar assistente"
             aria-label="Ocultar assistente"
           >
-            <ChevronRight size={14} />
+            <X size={10} />
           </button>
         )}
         <button
