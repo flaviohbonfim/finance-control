@@ -13,10 +13,46 @@ permissions:
   packages: write
 
 jobs:
+  check:
+    name: Check if release needed
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Check changed paths
+        id: check
+        run: |
+          LATEST=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1)
+          LATEST=${LATEST:-v0.0.0}
+
+          if git rev-parse "$LATEST" >/dev/null 2>&1; then
+            RANGE="${LATEST}..HEAD"
+          else
+            RANGE="HEAD"
+          fi
+
+          # Count files changed outside of mobile/
+          NON_MOBILE=$(git diff --name-only ${RANGE} | grep -vE '^mobile/' | wc -l | tr -d ' ')
+
+          if [ "$NON_MOBILE" -eq 0 ]; then
+            echo "should_release=false" >> $GITHUB_OUTPUT
+            echo "Only mobile/ changes detected — skipping release"
+          else
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "Server-side changes detected ($NON_MOBILE files) — proceeding with release"
+          fi
+
   version:
     name: Compute Version
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    needs: check
+    if: needs.check.outputs.should_release == 'true'
     outputs:
       version: ${{ steps.version.outputs.version }}
       tag: ${{ steps.version.outputs.tag }}
@@ -43,6 +79,7 @@ jobs:
           else
             COMMITS=$(git log HEAD --pretty=format:"%s")
           fi
+
           if echo "$COMMITS" | grep -qE '^(feat!|fix!|BREAKING CHANGE)'; then
             MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0
           elif echo "$COMMITS" | grep -qE '^feat'; then
