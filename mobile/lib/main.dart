@@ -12,18 +12,24 @@ void main() async {
   runApp(const ProviderScope(child: FinanceApp()));
 }
 
-class FinanceApp extends ConsumerWidget {
+class FinanceApp extends ConsumerStatefulWidget {
   const FinanceApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    ref.listen(authProvider, (_, __) {});
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(authProvider.notifier).checkAuth();
-    });
+  ConsumerState<FinanceApp> createState() => _FinanceAppState();
+}
 
+class _FinanceAppState extends ConsumerState<FinanceApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Chamado apenas uma vez — não a cada rebuild
+    Future.microtask(() => ref.read(authProvider.notifier).checkAuth());
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
-
     return MaterialApp.router(
       title: 'Finance Control',
       theme: AppTheme.dark,

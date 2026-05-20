@@ -12,15 +12,10 @@ import '../recurring/launch_modal.dart';
 
 enum DashView { month, general }
 
-class DashboardScreen extends ConsumerStatefulWidget {
+final _dashViewProvider = StateProvider<DashView>((ref) => DashView.month);
+
+class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
-
-  @override
-  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
-}
-
-class _DashboardScreenState extends ConsumerState<DashboardScreen> {
-  DashView _view = DashView.month;
 
   String get _monthLabel {
     final now = DateTime.now();
@@ -28,45 +23,39 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final view = ref.watch(_dashViewProvider);
     final dashAsync = ref.watch(dashboardProvider);
     final billsAsync = ref.watch(creditCardBillsProvider);
 
-    return Scaffold(
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () async {
-            ref.invalidate(dashboardProvider);
-            ref.invalidate(creditCardBillsProvider);
-          },
-          child: CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(child: _buildHeader()),
-              dashAsync.when(
-                data: (data) => SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                  sliver: SliverList(
-                    delegate: SliverChildListDelegate([
-                      if (_view == DashView.month)
-                        _MonthView(key: const ValueKey('month'), data: data, billsAsync: billsAsync, ref: ref)
-                      else
-                        _GeneralView(key: const ValueKey('general'), data: data),
-                    ]),
-                  ),
+    return SafeArea(
+      bottom: false,
+      child: CustomScrollView(
+        physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics()),
+        slivers: [
+          SliverToBoxAdapter(child: _buildHeader(view, ref)),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            sliver: SliverToBoxAdapter(
+              child: dashAsync.when(
+                data: (data) => view == DashView.month
+                    ? _MonthView(data: data, billsAsync: billsAsync, ref: ref)
+                    : _GeneralView(data: data),
+                loading: () => const SizedBox(
+                  height: 300,
+                  child: Center(child: CircularProgressIndicator()),
                 ),
-                loading: () => const SliverFillRemaining(
-                    child: Center(child: CircularProgressIndicator())),
-                error: (e, _) => SliverFillRemaining(
-                    child: Center(child: Text('Erro: $e'))),
+                error: (e, _) => Center(child: Text('Erro: $e')),
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(DashView view, WidgetRef ref) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
       child: Row(
@@ -82,60 +71,58 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ],
             ),
           ),
-          _SegmentedToggle(
-            selected: _view,
-            onChanged: (v) => setState(() => _view = v),
-          ),
+          _ViewToggle(current: view, ref: ref),
         ],
       ),
     );
   }
 }
 
-// ── Segmented toggle ──────────────────────────────────────────────────────────
+// ── View toggle ───────────────────────────────────────────────────────────────
 
-class _SegmentedToggle extends StatelessWidget {
-  final DashView selected;
-  final ValueChanged<DashView> onChanged;
+class _ViewToggle extends StatelessWidget {
+  final DashView current;
+  final WidgetRef ref;
 
-  const _SegmentedToggle({required this.selected, required this.onChanged});
+  const _ViewToggle({required this.current, required this.ref});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: AppTheme.surfaceColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppTheme.cardBorder),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _tab('Mês Atual', DashView.month),
-          _tab('Geral', DashView.general),
+          _tab(DashView.month, 'Mês Atual'),
+          _tab(DashView.general, 'Geral'),
         ],
       ),
     );
   }
 
-  Widget _tab(String label, DashView view) {
-    final active = selected == view;
+  Widget _tab(DashView value, String label) {
+    final active = current == value;
     return GestureDetector(
-      onTap: () => onChanged(view),
+      behavior: HitTestBehavior.opaque,
+      onTap: () => ref.read(_dashViewProvider.notifier).state = value,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: active ? Colors.white.withAlpha(15) : Colors.transparent,
-          borderRadius: BorderRadius.circular(9),
+          color: active ? AppTheme.primaryColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: active ? AppTheme.primaryColor : AppTheme.textMuted,
+            color: active ? Colors.white : AppTheme.textMuted,
           ),
         ),
       ),
@@ -150,7 +137,7 @@ class _MonthView extends StatelessWidget {
   final AsyncValue<List<CreditCardBill>> billsAsync;
   final WidgetRef ref;
 
-  const _MonthView({super.key, required this.data, required this.billsAsync, required this.ref});
+  const _MonthView({required this.data, required this.billsAsync, required this.ref});
 
   @override
   Widget build(BuildContext context) {
@@ -212,7 +199,7 @@ class _MonthView extends StatelessWidget {
 class _GeneralView extends StatelessWidget {
   final DashboardSummary data;
 
-  const _GeneralView({super.key, required this.data});
+  const _GeneralView({required this.data});
 
   @override
   Widget build(BuildContext context) {

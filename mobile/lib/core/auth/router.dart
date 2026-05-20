@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -13,12 +14,17 @@ import '../shell/main_shell.dart';
 import '../../features/auth/login_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final auth = ref.watch(authProvider);
+  // ValueNotifier faz ponte entre Riverpod e GoRouter.refreshListenable
+  // O GoRouter é criado UMA vez e só reavalia o redirect quando auth muda
+  final authNotifier = ValueNotifier<AuthState>(ref.read(authProvider));
+  ref.listen<AuthState>(authProvider, (_, next) => authNotifier.value = next);
+  ref.onDispose(authNotifier.dispose);
 
   return GoRouter(
     initialLocation: '/dashboard',
+    refreshListenable: authNotifier,
     redirect: (context, state) {
-      final loggedIn = auth.isAuthenticated;
+      final loggedIn = authNotifier.value.isAuthenticated;
       final onLogin = state.matchedLocation == '/login';
       if (!loggedIn && !onLogin) return '/login';
       if (loggedIn && onLogin) return '/dashboard';
