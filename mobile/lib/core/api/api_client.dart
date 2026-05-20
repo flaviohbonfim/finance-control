@@ -1,7 +1,14 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-const _apiBase = 'https://finance.apti.dev/api/v1';
+// Para dev local troque pela URL abaixo conforme o ambiente:
+//   iOS Simulator  → http://localhost:8000/api/v1
+//   Android Emu    → http://10.0.2.2:8000/api/v1
+//   Dispositivo    → http://<SEU_IP>:8000/api/v1
+const _apiBase = String.fromEnvironment(
+  'API_BASE_URL',
+  defaultValue: 'https://finance.apti.dev/api/v1',
+);
 
 class ApiClient {
   static final ApiClient _instance = ApiClient._();
