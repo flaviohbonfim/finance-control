@@ -207,7 +207,7 @@ class _BarChart extends StatelessWidget {
                                   ? FontWeight.w700
                                   : FontWeight.normal,
                               color: isSelected
-                                  ? AppTheme.primaryColor
+                                  ? context.appPrimary
                                   : AppTheme.textMuted,
                             ),
                           ),
@@ -455,7 +455,7 @@ class _TopTxTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = tx.category != null
         ? _hexColor(tx.category!.color)
-        : AppTheme.primaryColor;
+        : context.appPrimary;
     final date = DateTime.tryParse(tx.transactionDate);
     final dateStr =
         date != null ? DateFormat('dd/MM', 'pt_BR').format(date) : '';

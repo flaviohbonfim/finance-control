@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/api/models.dart';
@@ -35,7 +36,7 @@ class DashboardScreen extends ConsumerWidget {
         physics: const BouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics()),
         slivers: [
-          SliverToBoxAdapter(child: _buildHeader(view, ref)),
+          SliverToBoxAdapter(child: _buildHeader(context, view, ref)),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
             sliver: SliverToBoxAdapter(
@@ -53,9 +54,9 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader(DashView view, WidgetRef ref) {
+  Widget _buildHeader(BuildContext context, DashView view, WidgetRef ref) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+      padding: const EdgeInsets.fromLTRB(16, 16, 8, 20),
       child: Row(
         children: [
           Expanded(
@@ -70,6 +71,13 @@ class DashboardScreen extends ConsumerWidget {
             ),
           ),
           _ViewToggle(current: view, ref: ref),
+          const SizedBox(width: 4),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined, size: 22),
+            color: AppTheme.textMuted,
+            tooltip: 'Configurações',
+            onPressed: () => context.push('/settings'),
+          ),
         ],
       ),
     );
@@ -96,14 +104,14 @@ class _ViewToggle extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _tab(DashView.month, 'Mês Atual'),
-          _tab(DashView.general, 'Geral'),
+          _tab(context, DashView.month, 'Mês Atual'),
+          _tab(context, DashView.general, 'Geral'),
         ],
       ),
     );
   }
 
-  Widget _tab(DashView value, String label) {
+  Widget _tab(BuildContext context, DashView value, String label) {
     final active = current == value;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -112,7 +120,7 @@ class _ViewToggle extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: active ? AppTheme.primaryColor : Colors.transparent,
+          color: active ? context.appPrimary : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
@@ -217,7 +225,7 @@ class _GeneralView extends StatelessWidget {
                 label: 'Saldo Total',
                 value: data.totalBalance,
                 icon: Icons.account_balance_wallet,
-                color: AppTheme.primaryColor),
+                color: context.appPrimary),
             _StatCard(
                 label: 'Receitas',
                 value: data.monthlyIncome,
@@ -372,10 +380,10 @@ class _BillCard extends StatelessWidget {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withAlpha(30),
+                color: context.appPrimary.withAlpha(30),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.credit_card, size: 16, color: AppTheme.primaryColor),
+              child: Icon(Icons.credit_card, size: 16, color: context.appPrimary),
             ),
             const SizedBox(width: 10),
             Text(bill.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
@@ -602,7 +610,7 @@ class _TxTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = tx.category != null ? _parseColor(tx.category!.color) : AppTheme.primaryColor;
+    final color = tx.category != null ? _parseColor(tx.category!.color) : context.appPrimary;
     final isIncome = tx.isIncome;
     final date = DateTime.tryParse(tx.transactionDate);
     final dateStr = date != null ? DateFormat('dd/MM').format(date) : '';
@@ -716,11 +724,11 @@ class _RecurringCard extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: AppTheme.primaryColor.withAlpha(20),
+                          color: context.appPrimary.withAlpha(20),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(Icons.play_arrow,
-                            size: 14, color: AppTheme.primaryColor),
+                        child: Icon(Icons.play_arrow,
+                            size: 14, color: context.appPrimary),
                       ),
                     ),
                 ]),

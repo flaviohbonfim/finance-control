@@ -223,7 +223,7 @@ class _RecurringTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final catColor = rt.categoryColor != null
         ? _hexColor(rt.categoryColor!)
-        : AppTheme.primaryColor;
+        : context.appPrimary;
     final isIncome = rt.isIncome;
 
     return Padding(
@@ -276,7 +276,7 @@ class _RecurringTile extends StatelessWidget {
                   const SizedBox(height: 3),
                   Row(
                     children: [
-                      _chip(_freqLabel(rt.frequency), AppTheme.primaryColor),
+                      _chip(_freqLabel(rt.frequency), context.appPrimary),
                       const SizedBox(width: 6),
                       _chip(
                         isIncome ? 'Receita' : 'Despesa',
@@ -324,8 +324,8 @@ class _RecurringTile extends StatelessWidget {
               children: [
                 if (onLaunch != null && !rt.launchedThisMonth)
                   IconButton(
-                    icon: const Icon(Icons.play_circle_outline,
-                        color: AppTheme.primaryColor, size: 22),
+                    icon: Icon(Icons.play_circle_outline,
+                        color: context.appPrimary, size: 22),
                     tooltip: 'Lançar',
                     onPressed: onLaunch,
                   ),
@@ -570,7 +570,7 @@ class _RecurringFormSheetState extends ConsumerState<_RecurringFormSheet> {
                   _ToggleBtn(
                     label: 'Mensal',
                     selected: _frequency == 'monthly',
-                    color: AppTheme.primaryColor,
+                    color: context.appPrimary,
                     onTap: () =>
                         setState(() => _frequency = 'monthly'),
                   ),
@@ -578,7 +578,7 @@ class _RecurringFormSheetState extends ConsumerState<_RecurringFormSheet> {
                   _ToggleBtn(
                     label: 'Anual',
                     selected: _frequency == 'yearly',
-                    color: AppTheme.primaryColor,
+                    color: context.appPrimary,
                     onTap: () =>
                         setState(() => _frequency = 'yearly'),
                   ),
@@ -628,7 +628,7 @@ class _RecurringFormSheetState extends ConsumerState<_RecurringFormSheet> {
                     style: TextStyle(fontSize: 14)),
                 value: _isFixed,
                 onChanged: (v) => setState(() => _isFixed = v),
-                activeThumbColor: AppTheme.primaryColor,
+                activeThumbColor: context.appPrimary,
               ),
               if (_isFixed) ...[
                 TextFormField(
@@ -738,7 +738,7 @@ class _RecurringFormSheetState extends ConsumerState<_RecurringFormSheet> {
                   title: const Text('Ativo', style: TextStyle(fontSize: 14)),
                   value: _active,
                   onChanged: (v) => setState(() => _active = v),
-                  activeThumbColor: AppTheme.primaryColor,
+                  activeThumbColor: context.appPrimary,
                 ),
               ],
 

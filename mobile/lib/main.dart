@@ -30,12 +30,10 @@ class _FinanceAppState extends ConsumerState<FinanceApp> {
   @override
   Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
-    final themeMode = ref.watch(themeModeProvider);
+    final variant = ref.watch(themeProvider);
     return MaterialApp.router(
       title: 'Finance Control',
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: themeMode,
+      theme: AppTheme.themeData(variant),
       routerConfig: router,
       debugShowCheckedModeBanner: false,
     );

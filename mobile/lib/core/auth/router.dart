@@ -10,6 +10,7 @@ import '../../features/categories/categories_screen.dart';
 import '../../features/recurring/recurring_screen.dart';
 import '../../features/reports/reports_screen.dart';
 import '../../features/chat/chat_screen.dart';
+import '../../features/settings/settings_screen.dart';
 import '../shell/main_shell.dart';
 import '../../features/auth/login_screen.dart';
 
@@ -41,37 +42,20 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/login',
         pageBuilder: (_, state) => _fadePage(state.pageKey, const LoginScreen()),
       ),
+      GoRoute(
+        path: '/settings',
+        pageBuilder: (_, state) => _fadePage(state.pageKey, const SettingsScreen()),
+      ),
       ShellRoute(
         builder: (context, state, child) => MainShell(child: child),
         routes: [
-          GoRoute(
-            path: '/dashboard',
-            pageBuilder: (_, state) => _fadePage(state.pageKey, const DashboardScreen()),
-          ),
-          GoRoute(
-            path: '/transactions',
-            pageBuilder: (_, state) => _fadePage(state.pageKey, const TransactionsScreen()),
-          ),
-          GoRoute(
-            path: '/accounts',
-            pageBuilder: (_, state) => _fadePage(state.pageKey, const AccountsScreen()),
-          ),
-          GoRoute(
-            path: '/categories',
-            pageBuilder: (_, state) => _fadePage(state.pageKey, const CategoriesScreen()),
-          ),
-          GoRoute(
-            path: '/recurring',
-            pageBuilder: (_, state) => _fadePage(state.pageKey, const RecurringScreen()),
-          ),
-          GoRoute(
-            path: '/reports',
-            pageBuilder: (_, state) => _fadePage(state.pageKey, const ReportsScreen()),
-          ),
-          GoRoute(
-            path: '/chat',
-            pageBuilder: (_, state) => _fadePage(state.pageKey, const ChatScreen()),
-          ),
+          GoRoute(path: '/dashboard',    pageBuilder: (_, state) => _fadePage(state.pageKey, const DashboardScreen())),
+          GoRoute(path: '/transactions', pageBuilder: (_, state) => _fadePage(state.pageKey, const TransactionsScreen())),
+          GoRoute(path: '/accounts',     pageBuilder: (_, state) => _fadePage(state.pageKey, const AccountsScreen())),
+          GoRoute(path: '/categories',   pageBuilder: (_, state) => _fadePage(state.pageKey, const CategoriesScreen())),
+          GoRoute(path: '/recurring',    pageBuilder: (_, state) => _fadePage(state.pageKey, const RecurringScreen())),
+          GoRoute(path: '/reports',      pageBuilder: (_, state) => _fadePage(state.pageKey, const ReportsScreen())),
+          GoRoute(path: '/chat',         pageBuilder: (_, state) => _fadePage(state.pageKey, const ChatScreen())),
         ],
       ),
     ],

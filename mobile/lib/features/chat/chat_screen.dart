@@ -24,7 +24,7 @@ MarkdownStyleSheet _mdStyle(BuildContext context) => MarkdownStyleSheet(
         fontSize: 13,
         fontFamily: 'monospace',
         backgroundColor: context.appBg,
-        color: AppTheme.primaryColor,
+        color: context.appPrimary,
       ),
       codeblockPadding: const EdgeInsets.all(12),
       codeblockDecoration: BoxDecoration(
@@ -32,8 +32,8 @@ MarkdownStyleSheet _mdStyle(BuildContext context) => MarkdownStyleSheet(
         borderRadius: BorderRadius.circular(8),
       ),
       blockquotePadding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
-      blockquoteDecoration: const BoxDecoration(
-        border: Border(left: BorderSide(color: AppTheme.primaryColor, width: 3)),
+      blockquoteDecoration: BoxDecoration(
+        border: Border(left: BorderSide(color: context.appPrimary, width: 3)),
       ),
       tableHead: const TextStyle(
           fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
@@ -254,11 +254,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withAlpha(30),
+                color: context.appPrimary.withAlpha(30),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.smart_toy,
-                  size: 20, color: AppTheme.primaryColor),
+              child: Icon(Icons.smart_toy,
+                  size: 20, color: context.appPrimary),
             ),
             const SizedBox(width: 10),
             const Column(
@@ -313,11 +313,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withAlpha(20),
+                color: context.appPrimary.withAlpha(20),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.smart_toy,
-                  size: 36, color: AppTheme.primaryColor),
+              child: Icon(Icons.smart_toy,
+                  size: 36, color: context.appPrimary),
             ),
             const SizedBox(height: 16),
             const Text('Como posso ajudar?',
@@ -408,8 +408,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               height: 44,
               decoration: BoxDecoration(
                 color: _isStreaming
-                    ? AppTheme.primaryColor.withAlpha(80)
-                    : AppTheme.primaryColor,
+                    ? context.appPrimary.withAlpha(80)
+                    : context.appPrimary,
                 shape: BoxShape.circle,
               ),
               child: _isStreaming
@@ -449,11 +449,11 @@ class _MessageBubble extends StatelessWidget {
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withAlpha(25),
+                color: context.appPrimary.withAlpha(25),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.smart_toy,
-                  size: 15, color: AppTheme.primaryColor),
+              child: Icon(Icons.smart_toy,
+                  size: 15, color: context.appPrimary),
             ),
             const SizedBox(width: 8),
           ],
@@ -462,7 +462,7 @@ class _MessageBubble extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: isUser ? AppTheme.primaryColor : context.appSurface,
+                color: isUser ? context.appPrimary : context.appSurface,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(18),
                   topRight: const Radius.circular(18),
@@ -510,11 +510,11 @@ class _StreamingBubble extends StatelessWidget {
             width: 28,
             height: 28,
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withAlpha(25),
+              color: context.appPrimary.withAlpha(25),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.smart_toy,
-                size: 15, color: AppTheme.primaryColor),
+            child: Icon(Icons.smart_toy,
+                size: 15, color: context.appPrimary),
           ),
           const SizedBox(width: 8),
           Flexible(
@@ -535,12 +535,12 @@ class _StreamingBubble extends StatelessWidget {
                       style: const TextStyle(fontSize: 14, height: 1.45))
                   : Row(
                       children: [
-                        const SizedBox(
+                        SizedBox(
                           width: 14,
                           height: 14,
                           child: CircularProgressIndicator(
                               strokeWidth: 1.5,
-                              color: AppTheme.primaryColor),
+                              color: context.appPrimary),
                         ),
                         const SizedBox(width: 10),
                         Expanded(

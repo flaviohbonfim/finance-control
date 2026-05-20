@@ -174,12 +174,12 @@ class _TypeFilter extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
                       decoration: BoxDecoration(
                         color: selected == p.value
-                            ? AppTheme.primaryColor
+                            ? context.appPrimary
                             : context.appSurface,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: selected == p.value
-                              ? AppTheme.primaryColor
+                              ? context.appPrimary
                               : context.appBorder,
                         ),
                       ),

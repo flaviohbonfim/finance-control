@@ -1,28 +1,30 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'app_theme.dart';
 
-const _kThemeKey = 'theme_mode';
+const _kThemeKey = 'theme_variant';
 
-class ThemeModeNotifier extends Notifier<ThemeMode> {
+class ThemeNotifier extends Notifier<AppThemeVariant> {
   static const _storage = FlutterSecureStorage();
 
   @override
-  ThemeMode build() {
+  AppThemeVariant build() {
     _load();
-    return ThemeMode.dark;
+    return AppThemeVariant.dark;
   }
 
   Future<void> _load() async {
     final val = await _storage.read(key: _kThemeKey);
-    if (val == 'light') state = ThemeMode.light;
+    if (val == null) return;
+    final found = AppThemeVariant.values.where((v) => v.name == val).firstOrNull;
+    if (found != null) state = found;
   }
 
-  Future<void> toggle() async {
-    final next = state == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
-    state = next;
-    await _storage.write(key: _kThemeKey, value: next == ThemeMode.light ? 'light' : 'dark');
+  Future<void> set(AppThemeVariant variant) async {
+    state = variant;
+    await _storage.write(key: _kThemeKey, value: variant.name);
   }
 }
 
-final themeModeProvider = NotifierProvider<ThemeModeNotifier, ThemeMode>(ThemeModeNotifier.new);
+final themeProvider =
+    NotifierProvider<ThemeNotifier, AppThemeVariant>(ThemeNotifier.new);

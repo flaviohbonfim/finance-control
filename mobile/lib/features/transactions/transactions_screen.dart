@@ -64,7 +64,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(period, params),
+          _buildHeader(context, period, params),
           Expanded(
             child: txAsync.when(
               data: (data) {
@@ -81,7 +81,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     );
   }
 
-  Widget _buildHeader(TxPeriod period, TransactionParams params) {
+  Widget _buildHeader(BuildContext context, TxPeriod period, TransactionParams params) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
       child: Column(
@@ -100,7 +100,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor,
+                    color: context.appPrimary,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.add, color: Colors.white, size: 20),
@@ -224,9 +224,9 @@ class _PeriodToggle extends StatelessWidget {
         margin: const EdgeInsets.only(right: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: active ? AppTheme.primaryColor : context.appSurface,
+          color: active ? context.appPrimary : context.appSurface,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: active ? AppTheme.primaryColor : context.appBorder),
+          border: Border.all(color: active ? context.appPrimary : context.appBorder),
         ),
         child: Text(
           _labels[value]!,
@@ -307,7 +307,7 @@ class _TxItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = tx.category != null ? _parseColor(tx.category!.color) : AppTheme.primaryColor;
+    final color = tx.category != null ? _parseColor(tx.category!.color) : context.appPrimary;
     final isIncome = tx.isIncome;
 
     return Padding(

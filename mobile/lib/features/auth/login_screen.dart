@@ -48,7 +48,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryColor,
+                      color: context.appPrimary,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(Icons.account_balance_wallet, color: Colors.white, size: 22),
