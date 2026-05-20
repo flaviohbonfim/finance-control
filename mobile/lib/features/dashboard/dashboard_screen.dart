@@ -150,7 +150,7 @@ class _MonthView extends StatelessWidget {
   final AsyncValue<List<CreditCardBill>> billsAsync;
   final WidgetRef ref;
 
-  const _MonthView({required this.data, required this.billsAsync, required this.ref});
+  const _MonthView({super.key, required this.data, required this.billsAsync, required this.ref});
 
   @override
   Widget build(BuildContext context) {
@@ -212,7 +212,7 @@ class _MonthView extends StatelessWidget {
 class _GeneralView extends StatelessWidget {
   final DashboardSummary data;
 
-  const _GeneralView({required this.data});
+  const _GeneralView({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {
