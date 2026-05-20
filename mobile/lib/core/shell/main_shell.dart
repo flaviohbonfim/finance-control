@@ -6,11 +6,13 @@ class MainShell extends StatelessWidget {
   const MainShell({super.key, required this.child});
 
   static const _tabs = [
-    (icon: Icons.dashboard_outlined, active: Icons.dashboard, label: 'Dashboard', path: '/dashboard'),
+    (icon: Icons.dashboard_outlined, active: Icons.dashboard, label: 'Início', path: '/dashboard'),
     (icon: Icons.swap_vert_outlined, active: Icons.swap_vert, label: 'Transações', path: '/transactions'),
     (icon: Icons.account_balance_wallet_outlined, active: Icons.account_balance_wallet, label: 'Contas', path: '/accounts'),
+    (icon: Icons.bar_chart_outlined, active: Icons.bar_chart, label: 'Relatórios', path: '/reports'),
     (icon: Icons.category_outlined, active: Icons.category, label: 'Categorias', path: '/categories'),
-    (icon: Icons.repeat_outlined, active: Icons.repeat, label: 'Recorrentes', path: '/recurring'),
+    (icon: Icons.repeat_outlined, active: Icons.repeat, label: 'Recorren.', path: '/recurring'),
+    (icon: Icons.smart_toy_outlined, active: Icons.smart_toy, label: 'IA', path: '/chat'),
   ];
 
   int _currentIndex(BuildContext context) {
@@ -24,16 +26,27 @@ class MainShell extends StatelessWidget {
     final current = _currentIndex(context);
     return Scaffold(
       body: child,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: current,
-        onDestinationSelected: (i) => context.go(_tabs[i].path),
-        destinations: _tabs
-            .map((t) => NavigationDestination(
-                  icon: Icon(t.icon),
-                  selectedIcon: Icon(t.active),
-                  label: t.label,
-                ))
-            .toList(),
+      bottomNavigationBar: NavigationBarTheme(
+        data: NavigationBarThemeData(
+          labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
+                fontSize: 9.5,
+                fontWeight: states.contains(WidgetState.selected)
+                    ? FontWeight.w600
+                    : FontWeight.w400,
+                overflow: TextOverflow.ellipsis,
+              )),
+        ),
+        child: NavigationBar(
+          selectedIndex: current,
+          onDestinationSelected: (i) => context.go(_tabs[i].path),
+          destinations: _tabs
+              .map((t) => NavigationDestination(
+                    icon: Icon(t.icon),
+                    selectedIcon: Icon(t.active),
+                    label: t.label,
+                  ))
+              .toList(),
+        ),
       ),
     );
   }
