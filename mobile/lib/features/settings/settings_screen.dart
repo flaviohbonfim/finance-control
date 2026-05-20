@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/theme_provider.dart';
@@ -97,6 +101,13 @@ class SettingsScreen extends ConsumerWidget {
               );
             },
           ),
+
+          const SizedBox(height: 32),
+
+          // Telegram
+          _SectionLabel('Telegram'),
+          const SizedBox(height: 8),
+          const _TelegramSection(),
 
           const SizedBox(height: 32),
 
@@ -494,6 +505,221 @@ class _PasswordFormState extends ConsumerState<_PasswordForm> {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Telegram section ──────────────────────────────────────────────────────────
+
+class _TelegramSection extends StatefulWidget {
+  const _TelegramSection();
+
+  @override
+  State<_TelegramSection> createState() => _TelegramSectionState();
+}
+
+class _TelegramSectionState extends State<_TelegramSection> {
+  bool _loading = true;
+  bool _linked = false;
+  DateTime? _linkedAt;
+  bool _polling = false;
+  Timer? _pollTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkStatus();
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _checkStatus() async {
+    try {
+      final res = await api.get('/telegram/status');
+      if (!mounted) return;
+      setState(() {
+        _linked = res.data['linked'] as bool;
+        final at = res.data['linked_at'];
+        _linkedAt = at != null ? DateTime.tryParse(at as String) : null;
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _generateLink() async {
+    try {
+      final res = await api.post('/telegram/generate-link');
+      final url = Uri.parse(res.data['url'] as String);
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+      _startPolling();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erro ao gerar link do Telegram')),
+        );
+      }
+    }
+  }
+
+  void _startPolling() {
+    if (!mounted) return;
+    setState(() => _polling = true);
+    int attempts = 0;
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+      attempts++;
+      await _checkStatus();
+      if (_linked || attempts >= 10) {
+        _pollTimer?.cancel();
+        if (mounted) setState(() => _polling = false);
+      }
+    });
+  }
+
+  Future<void> _unlink() async {
+    setState(() => _loading = true);
+    try {
+      await api.delete('/telegram/unlink');
+    } catch (_) {}
+    await _checkStatus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.appBorder),
+      ),
+      child: _loading
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            )
+          : _linked
+              ? _buildLinked()
+              : _buildUnlinked(),
+    );
+  }
+
+  Widget _buildLinked() {
+    final dateStr = _linkedAt != null
+        ? '${_linkedAt!.day.toString().padLeft(2, '0')}/${_linkedAt!.month.toString().padLeft(2, '0')}/${_linkedAt!.year}'
+        : '';
+    return Row(
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: const Color(0xFF2CA5E0).withAlpha(25),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.telegram, color: Color(0xFF2CA5E0), size: 22),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Conta vinculada',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              if (dateStr.isNotEmpty)
+                Text('Desde $dateStr',
+                    style: const TextStyle(
+                        fontSize: 12, color: AppTheme.textMuted)),
+            ],
+          ),
+        ),
+        TextButton(
+          style: TextButton.styleFrom(foregroundColor: AppTheme.red),
+          onPressed: _unlink,
+          child: const Text('Desvincular',
+              style: TextStyle(fontSize: 13)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUnlinked() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: context.appBorder.withAlpha(80),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.telegram,
+                  color: AppTheme.textMuted, size: 22),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Não vinculado',
+                      style: TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w600)),
+                  Text('Use o assistente IA pelo Telegram',
+                      style: TextStyle(
+                          fontSize: 12, color: AppTheme.textMuted)),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _polling
+            ? Row(
+                children: [
+                  const SizedBox(
+                    height: 16,
+                    width: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text('Aguardando confirmação no Telegram…',
+                        style: TextStyle(
+                            fontSize: 13, color: AppTheme.textMuted)),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      _pollTimer?.cancel();
+                      setState(() => _polling = false);
+                    },
+                    child: const Text('Cancelar'),
+                  ),
+                ],
+              )
+            : SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.telegram, size: 18),
+                  label: const Text('Vincular ao Telegram'),
+                  onPressed: _generateLink,
+                ),
+              ),
+      ],
     );
   }
 }

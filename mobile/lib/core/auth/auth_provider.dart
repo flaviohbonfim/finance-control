@@ -46,6 +46,20 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
+  Future<void> register(String name, String email, String password) async {
+    state = state.copyWith(loading: true, error: null);
+    try {
+      final res = await api.post('/auth/register',
+          data: {'name': name, 'email': email, 'password': password});
+      final token = res.data['access_token'];
+      await api.saveToken(token);
+      state = AuthState(user: User.fromJson(res.data['user']));
+    } on Exception catch (e) {
+      final msg = _extractApiError(e, fallback: 'Erro ao criar conta');
+      state = state.copyWith(loading: false, error: msg);
+    }
+  }
+
   Future<void> logout() async {
     await api.clearToken();
     state = const AuthState();
@@ -66,7 +80,7 @@ class AuthNotifier extends Notifier<AuthState> {
     required String newPassword,
   }) async {
     try {
-      await api.post('/auth/change-password', data: {
+      await api.put('/auth/me/password', data: {
         'current_password': currentPassword,
         'new_password': newPassword,
       });
@@ -85,6 +99,7 @@ class AuthNotifier extends Notifier<AuthState> {
 
   String _extractApiError(Exception e, {required String fallback}) {
     final str = e.toString();
+    if (str.contains('400')) return 'Email já cadastrado';
     if (str.contains('401')) return 'Senha atual incorreta';
     if (str.contains('422')) return 'Dados inválidos';
     if (str.contains('SocketException') || str.contains('Connection')) return 'Sem conexão com o servidor';

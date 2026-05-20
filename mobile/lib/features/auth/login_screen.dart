@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
 
@@ -131,6 +132,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.white)),
                       )
                     : const Text('Entrar'),
+              ),
+              const SizedBox(height: 16),
+
+              // Register link
+              Center(
+                child: TextButton(
+                  onPressed: () => context.push('/register'),
+                  child: RichText(
+                    text: TextSpan(
+                      style: const TextStyle(
+                          fontSize: 13, color: AppTheme.textSecondary),
+                      children: [
+                        const TextSpan(text: 'Não tem conta? '),
+                        TextSpan(
+                          text: 'Criar conta',
+                          style: TextStyle(
+                            color: context.appPrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ],
           ),

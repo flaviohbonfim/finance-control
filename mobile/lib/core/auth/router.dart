@@ -13,6 +13,7 @@ import '../../features/chat/chat_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../shell/main_shell.dart';
 import '../../features/auth/login_screen.dart';
+import '../../features/auth/register_screen.dart';
 
 Page<void> _fadePage(LocalKey key, Widget child) => CustomTransitionPage(
       key: key,
@@ -32,15 +33,20 @@ final routerProvider = Provider<GoRouter>((ref) {
     refreshListenable: authNotifier,
     redirect: (context, state) {
       final loggedIn = authNotifier.value.isAuthenticated;
-      final onLogin = state.matchedLocation == '/login';
-      if (!loggedIn && !onLogin) return '/login';
-      if (loggedIn && onLogin) return '/dashboard';
+      final loc = state.matchedLocation;
+      final onAuthScreen = loc == '/login' || loc == '/register';
+      if (!loggedIn && !onAuthScreen) return '/login';
+      if (loggedIn && onAuthScreen) return '/dashboard';
       return null;
     },
     routes: [
       GoRoute(
         path: '/login',
         pageBuilder: (_, state) => _fadePage(state.pageKey, const LoginScreen()),
+      ),
+      GoRoute(
+        path: '/register',
+        pageBuilder: (_, state) => _fadePage(state.pageKey, const RegisterScreen()),
       ),
       GoRoute(
         path: '/settings',
