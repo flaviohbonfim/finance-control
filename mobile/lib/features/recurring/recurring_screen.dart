@@ -142,7 +142,7 @@ class RecurringScreen extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.surfaceColor,
+      backgroundColor: context.appSurface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => LaunchModal(
@@ -174,7 +174,7 @@ class RecurringScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.surfaceColor,
+        backgroundColor: context.appSurface,
         title: const Text('Excluir recorrente'),
         content: Text('Deseja excluir "${rt.description}"?'),
         actions: [
@@ -330,7 +330,7 @@ class _RecurringTile extends StatelessWidget {
                     onPressed: onLaunch,
                   ),
                 PopupMenuButton<String>(
-                  color: AppTheme.surfaceColor,
+                  color: context.appSurface,
                   icon: const Icon(Icons.more_vert,
                       size: 20, color: AppTheme.textMuted),
                   onSelected: (v) {
@@ -499,9 +499,9 @@ class _RecurringFormSheetState extends ConsumerState<_RecurringFormSheet> {
 
     return Container(
       margin: EdgeInsets.only(bottom: inset),
-      decoration: const BoxDecoration(
-        color: AppTheme.surfaceColor,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
       child: Form(
@@ -516,7 +516,7 @@ class _RecurringFormSheetState extends ConsumerState<_RecurringFormSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                      color: AppTheme.cardBorder,
+                      color: context.appBorder,
                       borderRadius: BorderRadius.circular(2)),
                 ),
               ),
@@ -653,7 +653,7 @@ class _RecurringFormSheetState extends ConsumerState<_RecurringFormSheet> {
                 data: (accounts) => DropdownButtonFormField<int>(
                   key: ValueKey(_accountId),
                   initialValue: _accountId,
-                  dropdownColor: AppTheme.bgColor,
+                  dropdownColor: context.appBg,
                   decoration: const InputDecoration(labelText: 'Conta'),
                   items: accounts
                       .map((a) => DropdownMenuItem(
@@ -676,7 +676,7 @@ class _RecurringFormSheetState extends ConsumerState<_RecurringFormSheet> {
                   initialValue: cats.any((c) => c.id == _categoryId)
                       ? _categoryId
                       : null,
-                  dropdownColor: AppTheme.bgColor,
+                  dropdownColor: context.appBg,
                   decoration: const InputDecoration(labelText: 'Categoria (opcional)'),
                   items: [
                     const DropdownMenuItem<int>(
@@ -787,10 +787,10 @@ class _ToggleBtn extends StatelessWidget {
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? color.withAlpha(30) : AppTheme.bgColor,
+            color: selected ? color.withAlpha(30) : context.appBg,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: selected ? color : AppTheme.cardBorder,
+              color: selected ? color : context.appBorder,
               width: selected ? 1.5 : 1,
             ),
           ),

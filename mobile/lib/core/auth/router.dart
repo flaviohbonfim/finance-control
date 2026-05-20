@@ -13,9 +13,15 @@ import '../../features/chat/chat_screen.dart';
 import '../shell/main_shell.dart';
 import '../../features/auth/login_screen.dart';
 
+Page<void> _fadePage(LocalKey key, Widget child) => CustomTransitionPage(
+      key: key,
+      child: child,
+      transitionDuration: const Duration(milliseconds: 200),
+      transitionsBuilder: (_, animation, __, child) =>
+          FadeTransition(opacity: animation, child: child),
+    );
+
 final routerProvider = Provider<GoRouter>((ref) {
-  // ValueNotifier faz ponte entre Riverpod e GoRouter.refreshListenable
-  // O GoRouter é criado UMA vez e só reavalia o redirect quando auth muda
   final authNotifier = ValueNotifier<AuthState>(ref.read(authProvider));
   ref.listen<AuthState>(authProvider, (_, next) => authNotifier.value = next);
   ref.onDispose(authNotifier.dispose);
@@ -31,17 +37,41 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(
+        path: '/login',
+        pageBuilder: (_, state) => _fadePage(state.pageKey, const LoginScreen()),
+      ),
       ShellRoute(
         builder: (context, state, child) => MainShell(child: child),
         routes: [
-          GoRoute(path: '/dashboard', builder: (context, state) => const DashboardScreen()),
-          GoRoute(path: '/transactions', builder: (context, state) => const TransactionsScreen()),
-          GoRoute(path: '/accounts', builder: (context, state) => const AccountsScreen()),
-          GoRoute(path: '/categories', builder: (context, state) => const CategoriesScreen()),
-          GoRoute(path: '/recurring', builder: (context, state) => const RecurringScreen()),
-          GoRoute(path: '/reports', builder: (context, state) => const ReportsScreen()),
-          GoRoute(path: '/chat', builder: (context, state) => const ChatScreen()),
+          GoRoute(
+            path: '/dashboard',
+            pageBuilder: (_, state) => _fadePage(state.pageKey, const DashboardScreen()),
+          ),
+          GoRoute(
+            path: '/transactions',
+            pageBuilder: (_, state) => _fadePage(state.pageKey, const TransactionsScreen()),
+          ),
+          GoRoute(
+            path: '/accounts',
+            pageBuilder: (_, state) => _fadePage(state.pageKey, const AccountsScreen()),
+          ),
+          GoRoute(
+            path: '/categories',
+            pageBuilder: (_, state) => _fadePage(state.pageKey, const CategoriesScreen()),
+          ),
+          GoRoute(
+            path: '/recurring',
+            pageBuilder: (_, state) => _fadePage(state.pageKey, const RecurringScreen()),
+          ),
+          GoRoute(
+            path: '/reports',
+            pageBuilder: (_, state) => _fadePage(state.pageKey, const ReportsScreen()),
+          ),
+          GoRoute(
+            path: '/chat',
+            pageBuilder: (_, state) => _fadePage(state.pageKey, const ChatScreen()),
+          ),
         ],
       ),
     ],

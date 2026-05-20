@@ -209,12 +209,12 @@ class _PeriodToggle extends StatelessWidget {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
-        children: TxPeriod.values.map(_tab).toList(),
+        children: TxPeriod.values.map((v) => _tab(v, context)).toList(),
       ),
     );
   }
 
-  Widget _tab(TxPeriod value) {
+  Widget _tab(TxPeriod value, BuildContext context) {
     final active = selected == value;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -224,9 +224,9 @@ class _PeriodToggle extends StatelessWidget {
         margin: const EdgeInsets.only(right: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: active ? AppTheme.primaryColor : AppTheme.surfaceColor,
+          color: active ? AppTheme.primaryColor : context.appSurface,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: active ? AppTheme.primaryColor : AppTheme.cardBorder),
+          border: Border.all(color: active ? AppTheme.primaryColor : context.appBorder),
         ),
         child: Text(
           _labels[value]!,
@@ -328,7 +328,7 @@ class _TxItem extends StatelessWidget {
         confirmDismiss: (_) => showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            backgroundColor: AppTheme.surfaceColor,
+            backgroundColor: context.appSurface,
             title: const Text('Excluir transação'),
             content: Text('Excluir "${tx.description}"?'),
             actions: [
@@ -469,9 +469,9 @@ class _TransactionFormState extends ConsumerState<_TransactionForm> {
 
     return Container(
       margin: EdgeInsets.only(bottom: inset),
-      decoration: const BoxDecoration(
-        color: AppTheme.surfaceColor,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
@@ -487,7 +487,7 @@ class _TransactionFormState extends ConsumerState<_TransactionForm> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppTheme.cardBorder,
+                    color: context.appBorder,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -539,7 +539,7 @@ class _TransactionFormState extends ConsumerState<_TransactionForm> {
                 data: (accounts) => DropdownButtonFormField<int>(
                   initialValue: _accountId,
                   decoration: const InputDecoration(labelText: 'Conta'),
-                  dropdownColor: AppTheme.bgColor,
+                  dropdownColor: context.appBg,
                   items: accounts
                       .map((a) => DropdownMenuItem(value: a.id, child: Text(a.name)))
                       .toList(),
@@ -556,7 +556,7 @@ class _TransactionFormState extends ConsumerState<_TransactionForm> {
                   key: ValueKey(_type),
                   initialValue: _categoryId,
                   decoration: const InputDecoration(labelText: 'Categoria (opcional)'),
-                  dropdownColor: AppTheme.bgColor,
+                  dropdownColor: context.appBg,
                   items: [
                     const DropdownMenuItem(value: null, child: Text('Sem categoria')),
                     ...cats.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))),
@@ -601,9 +601,9 @@ class _TypeToggle extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: AppTheme.bgColor,
+        color: context.appBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.cardBorder),
+        border: Border.all(color: context.appBorder),
       ),
       child: Row(children: [
         _tab('expense', 'Despesa', AppTheme.red),
@@ -665,9 +665,9 @@ class _DatePickerField extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFF374151),
+          color: context.appSurface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF4B5563)),
+          border: Border.all(color: context.appBorder),
         ),
         child: Row(
           children: [
@@ -675,7 +675,7 @@ class _DatePickerField extends StatelessWidget {
             const SizedBox(width: 10),
             Text(
               DateFormat("d 'de' MMMM 'de' yyyy", 'pt_BR').format(date),
-              style: const TextStyle(fontSize: 15, color: Color(0xFFF9FAFB)),
+              style: const TextStyle(fontSize: 15),
             ),
           ],
         ),

@@ -180,7 +180,7 @@ class _BarChart extends StatelessWidget {
                   show: true,
                   drawVerticalLine: false,
                   getDrawingHorizontalLine: (_) =>
-                      const FlLine(color: AppTheme.cardBorder, strokeWidth: 0.5),
+                      FlLine(color: context.appBorder, strokeWidth: 0.5),
                 ),
                 borderData: FlBorderData(show: false),
                 titlesData: FlTitlesData(
@@ -224,8 +224,8 @@ class _BarChart extends StatelessWidget {
                     }
                   },
                   touchTooltipData: BarTouchTooltipData(
-                    getTooltipColor: (_) => AppTheme.bgColor,
-                    tooltipBorder: const BorderSide(color: AppTheme.cardBorder),
+                    getTooltipColor: (_) => context.appBg,
+                    tooltipBorder: BorderSide(color: context.appBorder),
                     getTooltipItem: (group, _, rod, rodIndex) {
                       final s = data.length > group.x ? data[group.x] : null;
                       if (s == null) return null;
@@ -433,7 +433,7 @@ class _CategoryBar extends StatelessWidget {
             borderRadius: BorderRadius.circular(3),
             child: LinearProgressIndicator(
               value: pct,
-              backgroundColor: AppTheme.cardBorder,
+              backgroundColor: context.appBorder,
               color: color,
               minHeight: 4,
             ),

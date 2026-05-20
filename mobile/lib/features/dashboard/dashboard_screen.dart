@@ -7,6 +7,7 @@ import '../../core/api/models.dart';
 import '../../core/api/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/app_card.dart';
+import '../../shared/widgets/app_skeleton.dart';
 import '../../shared/widgets/currency_text.dart';
 import '../recurring/launch_modal.dart';
 
@@ -42,10 +43,7 @@ class DashboardScreen extends ConsumerWidget {
                 data: (data) => view == DashView.month
                     ? _MonthView(data: data, billsAsync: billsAsync, ref: ref)
                     : _GeneralView(data: data),
-                loading: () => const SizedBox(
-                  height: 300,
-                  child: Center(child: CircularProgressIndicator()),
-                ),
+                loading: () => const _DashboardSkeleton(),
                 error: (e, _) => Center(child: Text('Erro: $e')),
               ),
             ),
@@ -91,9 +89,9 @@ class _ViewToggle extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceColor,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppTheme.cardBorder),
+        border: Border.all(color: context.appBorder),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -326,7 +324,7 @@ class _CreditCardSection extends StatelessWidget {
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
             const SizedBox(height: 12),
             AppCard(
-              color: AppTheme.bgColor,
+              color: context.appBg,
               child: Row(children: [
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -387,7 +385,7 @@ class _BillCard extends StatelessWidget {
               style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
           const SizedBox(height: 2),
           CurrencyText(bill.currentBill.total, fontSize: 16, color: Colors.white),
-          const Divider(height: 16, color: AppTheme.cardBorder),
+          Divider(height: 16, color: context.appBorder),
           Text('Próximo ciclo · ${bill.nextBill.period}',
               style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
           const SizedBox(height: 2),
@@ -731,4 +729,48 @@ class _RecurringCard extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Dashboard skeleton ────────────────────────────────────────────────────────
+
+class _DashboardSkeleton extends StatelessWidget {
+  const _DashboardSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(children: [
+          Expanded(child: _skCard(context, height: 80)),
+          const SizedBox(width: 12),
+          Expanded(child: _skCard(context, height: 80)),
+        ]),
+        const SizedBox(height: 12),
+        _skCard(context, height: 80),
+        const SizedBox(height: 20),
+        _skCard(context, height: 160),
+        const SizedBox(height: 20),
+        _skCard(context, height: 200),
+      ],
+    );
+  }
+
+  Widget _skCard(BuildContext context, {required double height}) => Container(
+        height: height,
+        decoration: BoxDecoration(
+          color: context.appSurface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: context.appBorder),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            AppSkeleton(width: 80, height: 12),
+            AppSkeleton(width: 120, height: 20),
+          ],
+        ),
+      );
 }

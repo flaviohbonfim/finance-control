@@ -7,6 +7,7 @@ import '../../core/api/models.dart';
 import '../../core/api/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/app_card.dart';
+import '../../shared/widgets/app_skeleton.dart';
 import '../../shared/widgets/currency_text.dart';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -62,7 +63,7 @@ class AccountsScreen extends ConsumerWidget {
           Expanded(
             child: accountsAsync.when(
               data: (accounts) => _buildList(context, ref, accounts),
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const _AccountsSkeleton(),
               error: (e, _) => Center(child: Text('Erro: $e')),
             ),
           ),
@@ -154,7 +155,7 @@ class AccountsScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.surfaceColor,
+        backgroundColor: context.appSurface,
         title: const Text('Excluir conta'),
         content: Text('Deseja excluir "${account.name}"? Esta ação não pode ser desfeita.'),
         actions: [
@@ -216,12 +217,12 @@ class _AccountCard extends StatelessWidget {
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(14, 10, 4, 10),
-                  child: isCredit ? _creditContent(color) : _regularContent(color),
+                  child: isCredit ? _creditContent(color, context) : _regularContent(color),
                 ),
               ),
               // The PopupMenuButton absorbs its own tap so the card's onTap is not triggered
               PopupMenuButton<String>(
-                color: AppTheme.surfaceColor,
+                color: context.appSurface,
                 icon: const Icon(Icons.more_vert, size: 20, color: AppTheme.textMuted),
                 onSelected: (v) {
                   if (v == 'edit') onEdit();
@@ -266,7 +267,7 @@ class _AccountCard extends StatelessWidget {
     );
   }
 
-  Widget _creditContent(Color color) {
+  Widget _creditContent(Color color, BuildContext context) {
     final limit = account.creditLimit ?? 0;
     final used = account.balance.abs();
     final pct = limit > 0 ? (used / limit).clamp(0.0, 1.0) : 0.0;
@@ -322,7 +323,7 @@ class _AccountCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: pct,
-              backgroundColor: AppTheme.cardBorder,
+              backgroundColor: context.appBorder,
               color: barColor,
               minHeight: 4,
             ),
@@ -447,9 +448,9 @@ class _AccountFormSheetState extends ConsumerState<_AccountFormSheet> {
     final inset = MediaQuery.viewInsetsOf(context).bottom;
     return Container(
       margin: EdgeInsets.only(bottom: inset),
-      decoration: const BoxDecoration(
-        color: AppTheme.surfaceColor,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
       child: Form(
@@ -464,7 +465,7 @@ class _AccountFormSheetState extends ConsumerState<_AccountFormSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                      color: AppTheme.cardBorder,
+                      color: context.appBorder,
                       borderRadius: BorderRadius.circular(2)),
                 ),
               ),
@@ -482,7 +483,7 @@ class _AccountFormSheetState extends ConsumerState<_AccountFormSheet> {
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 initialValue: _type,
-                dropdownColor: AppTheme.bgColor,
+                dropdownColor: context.appBg,
                 decoration: const InputDecoration(labelText: 'Tipo'),
                 items: _kTypes
                     .map((t) => DropdownMenuItem(
@@ -591,7 +592,7 @@ class _InvoiceScreen extends ConsumerWidget {
     final invoiceAsync = ref.watch(invoiceProvider(account.id));
 
     return Scaffold(
-      backgroundColor: AppTheme.bgColor,
+      backgroundColor: context.appBg,
       appBar: AppBar(
         title: Text(account.name),
         actions: [
@@ -816,9 +817,9 @@ class _PayInvoiceSheetState extends ConsumerState<_PayInvoiceSheet> {
     final inset = MediaQuery.viewInsetsOf(context).bottom;
     return Container(
       margin: EdgeInsets.only(bottom: inset),
-      decoration: const BoxDecoration(
-        color: AppTheme.surfaceColor,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
       child: Column(
@@ -830,7 +831,7 @@ class _PayInvoiceSheetState extends ConsumerState<_PayInvoiceSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                  color: AppTheme.cardBorder, borderRadius: BorderRadius.circular(2)),
+                  color: context.appBorder, borderRadius: BorderRadius.circular(2)),
             ),
           ),
           const SizedBox(height: 16),
@@ -850,7 +851,7 @@ class _PayInvoiceSheetState extends ConsumerState<_PayInvoiceSheet> {
             DropdownButtonFormField<int>(
               initialValue: _sourceAccountId,
               decoration: const InputDecoration(labelText: 'Pagar com'),
-              dropdownColor: AppTheme.bgColor,
+              dropdownColor: context.appBg,
               items: widget.nonCardAccounts
                   .map((a) => DropdownMenuItem(
                         value: a.id,
@@ -876,6 +877,48 @@ class _PayInvoiceSheetState extends ConsumerState<_PayInvoiceSheet> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Accounts skeleton ─────────────────────────────────────────────────────────
+
+class _AccountsSkeleton extends StatelessWidget {
+  const _AccountsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+      itemCount: 4,
+      itemBuilder: (_, __) => Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Container(
+          height: 80,
+          decoration: BoxDecoration(
+            color: context.appSurface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: context.appBorder),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Row(children: [
+            AppSkeleton(width: 4, height: 48, radius: 2),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  AppSkeleton(width: 120, height: 14),
+                  const SizedBox(height: 8),
+                  AppSkeleton(width: 60, height: 10),
+                ],
+              ),
+            ),
+            AppSkeleton(width: 80, height: 18),
+          ]),
+        ),
       ),
     );
   }

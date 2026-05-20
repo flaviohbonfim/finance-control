@@ -66,7 +66,7 @@ class _LaunchModalState extends State<LaunchModal> {
             child: Container(
               width: 40, height: 4,
               decoration: BoxDecoration(
-                color: AppTheme.cardBorder, borderRadius: BorderRadius.circular(2)),
+                color: context.appBorder, borderRadius: BorderRadius.circular(2)),
             ),
           ),
           const SizedBox(height: 16),
@@ -89,7 +89,7 @@ class _LaunchModalState extends State<LaunchModal> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppTheme.bgColor, borderRadius: BorderRadius.circular(12)),
+                color: context.appBg, borderRadius: BorderRadius.circular(12)),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(widget.rt.description,
                     style: const TextStyle(fontWeight: FontWeight.w600)),
@@ -125,7 +125,7 @@ class _LaunchModalState extends State<LaunchModal> {
                   onPressed: () => Navigator.pop(context),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(0, 48),
-                    side: const BorderSide(color: AppTheme.cardBorder),
+                    side: BorderSide(color: context.appBorder),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   child: const Text('Cancelar'),

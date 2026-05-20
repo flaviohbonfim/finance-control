@@ -12,44 +12,42 @@ import '../../core/theme/app_theme.dart';
 
 // ── Markdown style ────────────────────────────────────────────────────────────
 
-final _mdStyle = MarkdownStyleSheet(
-  p: const TextStyle(fontSize: 14, height: 1.45),
-  strong: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-  em: const TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
-  h1: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-  h2: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-  h3: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-  listBullet: const TextStyle(fontSize: 14),
-  code: TextStyle(
-    fontSize: 13,
-    fontFamily: 'monospace',
-    backgroundColor: AppTheme.bgColor,
-    color: AppTheme.primaryColor,
-  ),
-  codeblockPadding: const EdgeInsets.all(12),
-  codeblockDecoration: BoxDecoration(
-    color: AppTheme.bgColor,
-    borderRadius: BorderRadius.circular(8),
-  ),
-  blockquotePadding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
-  blockquoteDecoration: const BoxDecoration(
-    border: Border(
-        left: BorderSide(color: AppTheme.primaryColor, width: 3)),
-  ),
-  tableHead: const TextStyle(
-      fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
-  tableBody: const TextStyle(fontSize: 12),
-  tableBorder: TableBorder.all(color: AppTheme.cardBorder, width: 0.5),
-  tableHeadAlign: TextAlign.left,
-  tableCellsPadding:
-      const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-  tableColumnWidth: const FlexColumnWidth(),
-  horizontalRuleDecoration: const BoxDecoration(
-    border: Border(bottom: BorderSide(color: AppTheme.cardBorder)),
-  ),
-  blockSpacing: 8,
-  listIndent: 16,
-);
+MarkdownStyleSheet _mdStyle(BuildContext context) => MarkdownStyleSheet(
+      p: const TextStyle(fontSize: 14, height: 1.45),
+      strong: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+      em: const TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
+      h1: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+      h2: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+      h3: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+      listBullet: const TextStyle(fontSize: 14),
+      code: TextStyle(
+        fontSize: 13,
+        fontFamily: 'monospace',
+        backgroundColor: context.appBg,
+        color: AppTheme.primaryColor,
+      ),
+      codeblockPadding: const EdgeInsets.all(12),
+      codeblockDecoration: BoxDecoration(
+        color: context.appBg,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      blockquotePadding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
+      blockquoteDecoration: const BoxDecoration(
+        border: Border(left: BorderSide(color: AppTheme.primaryColor, width: 3)),
+      ),
+      tableHead: const TextStyle(
+          fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
+      tableBody: const TextStyle(fontSize: 12),
+      tableBorder: TableBorder.all(color: context.appBorder, width: 0.5),
+      tableHeadAlign: TextAlign.left,
+      tableCellsPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      tableColumnWidth: const FlexColumnWidth(),
+      horizontalRuleDecoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: context.appBorder)),
+      ),
+      blockSpacing: 8,
+      listIndent: 16,
+    );
 
 // ── Message model ─────────────────────────────────────────────────────────────
 
@@ -369,9 +367,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final inset = MediaQuery.viewInsetsOf(context).bottom;
     return Container(
       padding: EdgeInsets.fromLTRB(12, 8, 12, 12 + inset),
-      decoration: const BoxDecoration(
-        color: AppTheme.surfaceColor,
-        border: Border(top: BorderSide(color: AppTheme.cardBorder)),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        border: Border(top: BorderSide(color: context.appBorder)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -379,9 +377,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: AppTheme.bgColor,
+                color: context.appBg,
                 borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: AppTheme.cardBorder),
+                border: Border.all(color: context.appBorder),
               ),
               child: TextField(
                 controller: _ctrl,
@@ -464,7 +462,7 @@ class _MessageBubble extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: isUser ? AppTheme.primaryColor : AppTheme.surfaceColor,
+                color: isUser ? AppTheme.primaryColor : context.appSurface,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(18),
                   topRight: const Radius.circular(18),
@@ -482,7 +480,7 @@ class _MessageBubble extends StatelessWidget {
                       data: msg.content,
                       selectable: true,
                       extensionSet: md.ExtensionSet.gitHubFlavored,
-                      styleSheet: _mdStyle,
+                      styleSheet: _mdStyle(context),
                     ),
             ),
           ),
@@ -523,9 +521,9 @@ class _StreamingBubble extends StatelessWidget {
             child: Container(
               padding:
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: const BoxDecoration(
-                color: AppTheme.surfaceColor,
-                borderRadius: BorderRadius.only(
+              decoration: BoxDecoration(
+                color: context.appSurface,
+                borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(18),
                   topRight: Radius.circular(18),
                   bottomLeft: Radius.circular(4),
@@ -628,9 +626,9 @@ class _SuggestionChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: AppTheme.surfaceColor,
+          color: context.appSurface,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppTheme.cardBorder),
+          border: Border.all(color: context.appBorder),
         ),
         child: Text(label,
             style: const TextStyle(

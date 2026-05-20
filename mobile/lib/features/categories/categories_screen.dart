@@ -115,7 +115,7 @@ class CategoriesScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.surfaceColor,
+        backgroundColor: context.appSurface,
         title: const Text('Excluir categoria'),
         content: Text('Deseja excluir "${cat.name}"?'),
         actions: [
@@ -175,12 +175,12 @@ class _TypeFilter extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: selected == p.value
                             ? AppTheme.primaryColor
-                            : AppTheme.surfaceColor,
+                            : context.appSurface,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: selected == p.value
                               ? AppTheme.primaryColor
-                              : AppTheme.cardBorder,
+                              : context.appBorder,
                         ),
                       ),
                       child: Text(
@@ -249,7 +249,7 @@ class _CategoryTile extends StatelessWidget {
             ),
           ),
           PopupMenuButton<String>(
-            color: AppTheme.surfaceColor,
+            color: context.appSurface,
             icon: const Icon(Icons.more_vert, size: 20, color: AppTheme.textMuted),
             onSelected: (v) {
               if (v == 'edit') onEdit();
@@ -351,9 +351,9 @@ class _CategoryFormSheetState extends ConsumerState<_CategoryFormSheet> {
     final inset = MediaQuery.viewInsetsOf(context).bottom;
     return Container(
       margin: EdgeInsets.only(bottom: inset),
-      decoration: const BoxDecoration(
-        color: AppTheme.surfaceColor,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
       child: Form(
@@ -367,7 +367,7 @@ class _CategoryFormSheetState extends ConsumerState<_CategoryFormSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                    color: AppTheme.cardBorder,
+                    color: context.appBorder,
                     borderRadius: BorderRadius.circular(2)),
               ),
             ),
@@ -478,10 +478,10 @@ class _TypeToggleBtn extends StatelessWidget {
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? color.withAlpha(30) : AppTheme.bgColor,
+            color: selected ? color.withAlpha(30) : context.appBg,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: selected ? color : AppTheme.cardBorder,
+              color: selected ? color : context.appBorder,
               width: selected ? 1.5 : 1,
             ),
           ),
