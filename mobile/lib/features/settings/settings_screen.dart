@@ -22,49 +22,54 @@ class SettingsScreen extends ConsumerWidget {
           if (user != null) ...[
             _SectionLabel('Conta'),
             const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: context.appSurface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: context.appBorder),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: context.appPrimary.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: context.appPrimary,
+            InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () => _openEditProfile(context, ref),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: context.appSurface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: context.appBorder),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: context.appPrimary.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: context.appPrimary,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(user.name,
-                            style: const TextStyle(
-                                fontSize: 15, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 2),
-                        Text(user.email,
-                            style: const TextStyle(
-                                fontSize: 12, color: AppTheme.textMuted)),
-                      ],
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(user.name,
+                              style: const TextStyle(
+                                  fontSize: 15, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 2),
+                          Text(user.email,
+                              style: const TextStyle(
+                                  fontSize: 12, color: AppTheme.textMuted)),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                    const Icon(Icons.chevron_right, color: AppTheme.textMuted, size: 20),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 24),
@@ -124,6 +129,15 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
+  void _openEditProfile(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _EditProfileSheet(ref: ref),
+    );
+  }
+
   void _confirmLogout(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
@@ -145,6 +159,340 @@ class SettingsScreen extends ConsumerWidget {
             child: const Text('Sair'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Edit profile bottom sheet ─────────────────────────────────────────────────
+
+class _EditProfileSheet extends ConsumerStatefulWidget {
+  final WidgetRef ref;
+  const _EditProfileSheet({required this.ref});
+
+  @override
+  ConsumerState<_EditProfileSheet> createState() => _EditProfileSheetState();
+}
+
+class _EditProfileSheetState extends ConsumerState<_EditProfileSheet>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabs;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabs = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final inset = MediaQuery.viewInsetsOf(context).bottom;
+    return Container(
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: EdgeInsets.only(bottom: inset),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle
+          const SizedBox(height: 12),
+          Container(
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+              color: context.appBorder,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text('Editar perfil',
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+          ),
+          const SizedBox(height: 12),
+
+          // Tabs
+          TabBar(
+            controller: _tabs,
+            tabs: const [
+              Tab(text: 'Dados pessoais'),
+              Tab(text: 'Alterar senha'),
+            ],
+          ),
+
+          // Tab views — fixed height avoids overflow with keyboard
+          SizedBox(
+            height: 280,
+            child: TabBarView(
+              controller: _tabs,
+              children: [
+                _ProfileForm(ref: ref),
+                _PasswordForm(ref: ref),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Profile form (name + email) ───────────────────────────────────────────────
+
+class _ProfileForm extends ConsumerStatefulWidget {
+  final WidgetRef ref;
+  const _ProfileForm({required this.ref});
+
+  @override
+  ConsumerState<_ProfileForm> createState() => _ProfileFormState();
+}
+
+class _ProfileFormState extends ConsumerState<_ProfileForm> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _emailCtrl;
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    final user = ref.read(authProvider).user;
+    _nameCtrl = TextEditingController(text: user?.name ?? '');
+    _emailCtrl = TextEditingController(text: user?.email ?? '');
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _emailCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    final err = await ref.read(authProvider.notifier).updateProfile(
+          name: _nameCtrl.text.trim(),
+          email: _emailCtrl.text.trim(),
+        );
+    if (!mounted) return;
+    if (err != null) {
+      setState(() {
+        _saving = false;
+        _error = err;
+      });
+    } else {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Perfil atualizado')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          children: [
+            TextFormField(
+              controller: _nameCtrl,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(labelText: 'Nome'),
+              validator: (v) =>
+                  v == null || v.trim().isEmpty ? 'Informe o nome' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(labelText: 'E-mail'),
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'Informe o e-mail';
+                if (!v.contains('@')) return 'E-mail inválido';
+                return null;
+              },
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 10),
+              Text(_error!,
+                  style: const TextStyle(color: AppTheme.red, fontSize: 13)),
+            ],
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _saving ? null : _save,
+                child: _saving
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text('Salvar'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Password form ─────────────────────────────────────────────────────────────
+
+class _PasswordForm extends ConsumerStatefulWidget {
+  final WidgetRef ref;
+  const _PasswordForm({required this.ref});
+
+  @override
+  ConsumerState<_PasswordForm> createState() => _PasswordFormState();
+}
+
+class _PasswordFormState extends ConsumerState<_PasswordForm> {
+  final _formKey = GlobalKey<FormState>();
+  final _currentCtrl = TextEditingController();
+  final _newCtrl = TextEditingController();
+  final _confirmCtrl = TextEditingController();
+  bool _saving = false;
+  bool _showCurrent = false;
+  bool _showNew = false;
+  bool _showConfirm = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _currentCtrl.dispose();
+    _newCtrl.dispose();
+    _confirmCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    final err = await ref.read(authProvider.notifier).changePassword(
+          currentPassword: _currentCtrl.text,
+          newPassword: _newCtrl.text,
+        );
+    if (!mounted) return;
+    if (err != null) {
+      setState(() {
+        _saving = false;
+        _error = err;
+      });
+    } else {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Senha alterada com sucesso')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          children: [
+            TextFormField(
+              controller: _currentCtrl,
+              obscureText: !_showCurrent,
+              decoration: InputDecoration(
+                labelText: 'Senha atual',
+                suffixIcon: IconButton(
+                  icon: Icon(_showCurrent
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                      size: 20),
+                  onPressed: () =>
+                      setState(() => _showCurrent = !_showCurrent),
+                ),
+              ),
+              validator: (v) =>
+                  v == null || v.isEmpty ? 'Informe a senha atual' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _newCtrl,
+              obscureText: !_showNew,
+              decoration: InputDecoration(
+                labelText: 'Nova senha',
+                suffixIcon: IconButton(
+                  icon: Icon(_showNew
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                      size: 20),
+                  onPressed: () => setState(() => _showNew = !_showNew),
+                ),
+              ),
+              validator: (v) {
+                if (v == null || v.isEmpty) return 'Informe a nova senha';
+                if (v.length < 6) return 'Mínimo 6 caracteres';
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _confirmCtrl,
+              obscureText: !_showConfirm,
+              decoration: InputDecoration(
+                labelText: 'Confirmar nova senha',
+                suffixIcon: IconButton(
+                  icon: Icon(_showConfirm
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                      size: 20),
+                  onPressed: () =>
+                      setState(() => _showConfirm = !_showConfirm),
+                ),
+              ),
+              validator: (v) =>
+                  v != _newCtrl.text ? 'As senhas não coincidem' : null,
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 10),
+              Text(_error!,
+                  style: const TextStyle(color: AppTheme.red, fontSize: 13)),
+            ],
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _saving ? null : _save,
+                child: _saving
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text('Alterar senha'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -203,7 +551,6 @@ class _ThemeCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Color preview dots
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [

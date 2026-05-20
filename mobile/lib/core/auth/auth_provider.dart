@@ -51,11 +51,44 @@ class AuthNotifier extends Notifier<AuthState> {
     state = const AuthState();
   }
 
+  Future<String?> updateProfile({required String name, required String email}) async {
+    try {
+      final res = await api.put('/auth/me', data: {'name': name, 'email': email});
+      state = state.copyWith(user: User.fromJson(res.data));
+      return null;
+    } on Exception catch (e) {
+      return _extractApiError(e, fallback: 'Erro ao atualizar perfil');
+    }
+  }
+
+  Future<String?> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      await api.post('/auth/change-password', data: {
+        'current_password': currentPassword,
+        'new_password': newPassword,
+      });
+      return null;
+    } on Exception catch (e) {
+      return _extractApiError(e, fallback: 'Erro ao alterar senha');
+    }
+  }
+
   String _extractError(Exception e) {
     final str = e.toString();
     if (str.contains('401') || str.contains('Incorrect')) return 'Email ou senha incorretos';
     if (str.contains('SocketException') || str.contains('Connection')) return 'Sem conexão com o servidor';
     return 'Erro ao fazer login';
+  }
+
+  String _extractApiError(Exception e, {required String fallback}) {
+    final str = e.toString();
+    if (str.contains('401')) return 'Senha atual incorreta';
+    if (str.contains('422')) return 'Dados inválidos';
+    if (str.contains('SocketException') || str.contains('Connection')) return 'Sem conexão com o servidor';
+    return fallback;
   }
 }
 
