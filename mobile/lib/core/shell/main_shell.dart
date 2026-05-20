@@ -9,8 +9,8 @@ class MainShell extends StatelessWidget {
     (icon: Icons.dashboard_outlined, active: Icons.dashboard, label: 'Dashboard', path: '/dashboard'),
     (icon: Icons.swap_vert_outlined, active: Icons.swap_vert, label: 'Transações', path: '/transactions'),
     (icon: Icons.account_balance_wallet_outlined, active: Icons.account_balance_wallet, label: 'Contas', path: '/accounts'),
-    (icon: Icons.bar_chart_outlined, active: Icons.bar_chart, label: 'Relatórios', path: '/reports'),
-    (icon: Icons.smart_toy_outlined, active: Icons.smart_toy, label: 'IA', path: '/chat'),
+    (icon: Icons.category_outlined, active: Icons.category, label: 'Categorias', path: '/categories'),
+    (icon: Icons.repeat_outlined, active: Icons.repeat, label: 'Recorrentes', path: '/recurring'),
   ];
 
   int _currentIndex(BuildContext context) {
