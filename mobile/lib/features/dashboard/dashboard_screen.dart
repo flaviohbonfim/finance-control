@@ -48,9 +48,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
                       if (_view == DashView.month)
-                        _MonthView(data: data, billsAsync: billsAsync, ref: ref)
+                        _MonthView(key: const ValueKey('month'), data: data, billsAsync: billsAsync, ref: ref)
                       else
-                        _GeneralView(data: data),
+                        _GeneralView(key: const ValueKey('general'), data: data),
                     ]),
                   ),
                 ),
