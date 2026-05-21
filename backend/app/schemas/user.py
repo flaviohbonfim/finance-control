@@ -21,6 +21,7 @@ class UserOut(BaseModel):
     name: str
     email: str
     is_active: bool
+    is_verified: bool
     created_at: datetime
 
 
@@ -38,3 +39,25 @@ class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserOut
+
+
+class VerifyEmailRequest(BaseModel):
+    code: str
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    code: str
+    new_password: str
+
+
+class GoogleAuthRequest(BaseModel):
+    id_token: str

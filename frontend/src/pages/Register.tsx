@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { TrendingUp } from "lucide-react";
-import { useRegister } from "@/hooks/useApi";
+import { GoogleLogin } from "@react-oauth/google";
+import { useRegister, useGoogleAuth } from "@/hooks/useApi";
 import { useAuthStore } from "@/store/auth";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -13,10 +14,13 @@ interface FormData {
   password: string;
 }
 
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
+
 export default function Register() {
   const navigate = useNavigate();
   const { setAuth } = useAuthStore();
   const register_ = useRegister();
+  const googleAuth = useGoogleAuth();
   const [error, setError] = useState("");
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>();
 
@@ -25,10 +29,22 @@ export default function Register() {
     try {
       const res = await register_.mutateAsync(data);
       setAuth(res.access_token, res.user);
-      navigate("/");
+      navigate("/verify-email");
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
       setError(msg || "Erro ao criar conta");
+    }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse: { credential?: string }) => {
+    if (!credentialResponse.credential) return;
+    setError("");
+    try {
+      const res = await googleAuth.mutateAsync({ id_token: credentialResponse.credential });
+      setAuth(res.access_token, res.user);
+      navigate("/");
+    } catch {
+      setError("Erro ao entrar com Google. Tente novamente.");
     }
   };
 
@@ -77,6 +93,32 @@ export default function Register() {
               Criar conta
             </Button>
           </form>
+
+          {GOOGLE_CLIENT_ID && (
+            <>
+              <div className="relative my-5">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200" />
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="px-2 text-gray-400" style={{ backgroundColor: "var(--theme-surface)" }}>
+                    ou continue com
+                  </span>
+                </div>
+              </div>
+              <div className="flex justify-center">
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => setError("Erro ao entrar com Google")}
+                  useOneTap={false}
+                  text="signup_with"
+                  shape="rectangular"
+                  size="large"
+                  width="368"
+                />
+              </div>
+            </>
+          )}
 
           <p className="mt-6 text-center text-sm text-gray-600">
             Já tem conta?{" "}

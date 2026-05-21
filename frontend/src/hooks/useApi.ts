@@ -27,6 +27,36 @@ export const useRegister = () =>
       api.post<AuthResponse>("/auth/register", data).then((r) => r.data),
   });
 
+export const useVerifyEmail = () =>
+  useMutation({
+    mutationFn: (data: { code: string }) =>
+      api.post("/auth/verify-email", data),
+  });
+
+export const useResendVerification = () =>
+  useMutation({
+    mutationFn: (data: { email: string }) =>
+      api.post("/auth/resend-verification", data),
+  });
+
+export const useForgotPassword = () =>
+  useMutation({
+    mutationFn: (data: { email: string }) =>
+      api.post("/auth/forgot-password", data),
+  });
+
+export const useResetPassword = () =>
+  useMutation({
+    mutationFn: (data: { email: string; code: string; new_password: string }) =>
+      api.post("/auth/reset-password", data),
+  });
+
+export const useGoogleAuth = () =>
+  useMutation({
+    mutationFn: (data: { id_token: string }) =>
+      api.post<AuthResponse>("/auth/google", data).then((r) => r.data),
+  });
+
 export const useUpdateProfile = () =>
   useMutation({
     mutationFn: (data: { name: string; email: string }) =>

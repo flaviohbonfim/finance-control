@@ -18,6 +18,8 @@ python-jose = {extras = ["cryptography"], version = "^3.3.0"}
 bcrypt = "^4.2.0"
 python-multipart = "^0.0.12"
 httpx = "^0.28.0"
+fastapi-mail = ">=1.4.2"
+google-auth = ">=2.38.0"
 google-genai = "^2.4.0"
 groq = "^0.13.0"
 openai = "^1.0.0"

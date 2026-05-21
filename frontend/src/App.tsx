@@ -5,6 +5,9 @@ import { useThemeStore } from "@/store/theme";
 import Layout from "@/components/layout/Layout";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
+import VerifyEmail from "@/pages/VerifyEmail";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
 import Dashboard from "@/pages/Dashboard";
 import Accounts from "@/pages/Accounts";
 import Categories from "@/pages/Categories";
@@ -16,20 +19,21 @@ import Profile from "@/pages/Profile";
 import ChatWidget from "@/components/chat/ChatWidget";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
-  const { token } = useAuthStore();
-  return token ? (
+  const { token, user } = useAuthStore();
+  if (!token) return <Navigate to="/login" replace />;
+  if (user && !user.is_verified) return <Navigate to="/verify-email" replace />;
+  return (
     <>
       {children}
       <ChatWidget />
     </>
-  ) : (
-    <Navigate to="/login" replace />
   );
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { token } = useAuthStore();
-  return token ? <Navigate to="/" replace /> : <>{children}</>;
+  const { token, user } = useAuthStore();
+  if (token && user?.is_verified) return <Navigate to="/" replace />;
+  return <>{children}</>;
 }
 
 export default function App() {
@@ -44,6 +48,9 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+        <Route path="/reset-password" element={<PublicRoute><ResetPassword /></PublicRoute>} />
         <Route
           path="/"
           element={<PrivateRoute><Layout /></PrivateRoute>}
