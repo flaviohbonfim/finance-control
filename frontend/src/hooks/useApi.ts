@@ -29,7 +29,7 @@ export const useRegister = () =>
 
 export const useVerifyEmail = () =>
   useMutation({
-    mutationFn: (data: { code: string }) =>
+    mutationFn: (data: { email: string; code: string }) =>
       api.post("/auth/verify-email", data),
   });
 

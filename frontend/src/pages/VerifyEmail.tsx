@@ -62,7 +62,7 @@ export default function VerifyEmail() {
     if (code.length < 6) { setError("Digite os 6 dígitos do código"); return; }
     setError("");
     try {
-      await verifyEmail.mutateAsync({ code });
+      await verifyEmail.mutateAsync({ email: user.email, code });
       if (user) updateUser({ ...user, is_verified: true });
       navigate("/");
     } catch {

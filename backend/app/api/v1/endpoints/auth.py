@@ -73,23 +73,24 @@ async def register(payload: UserCreate, db: AsyncSession = Depends(get_db)):
 @router.post("/verify-email", status_code=status.HTTP_204_NO_CONTENT)
 async def verify_email(
     payload: VerifyEmailRequest,
-    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.is_verified:
-        return
+    result = await db.execute(select(User).where(User.email == payload.email))
+    user = result.scalar_one_or_none()
 
     now = _now()
     if (
-        current_user.verification_code != payload.code
-        or current_user.verification_code_expires_at is None
-        or current_user.verification_code_expires_at < now
+        not user
+        or user.is_verified
+        or user.verification_code != payload.code
+        or user.verification_code_expires_at is None
+        or user.verification_code_expires_at < now
     ):
         raise HTTPException(status_code=400, detail="Código inválido ou expirado")
 
-    current_user.is_verified = True
-    current_user.verification_code = None
-    current_user.verification_code_expires_at = None
+    user.is_verified = True
+    user.verification_code = None
+    user.verification_code_expires_at = None
     await db.commit()
 
 

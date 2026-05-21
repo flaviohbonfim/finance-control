@@ -42,6 +42,7 @@ class Token(BaseModel):
 
 
 class VerifyEmailRequest(BaseModel):
+    email: EmailStr
     code: str
 
 
