@@ -62,7 +62,10 @@ class AccountsScreen extends ConsumerWidget {
           ),
           Expanded(
             child: accountsAsync.when(
-              data: (accounts) => _buildList(context, ref, accounts),
+              data: (accounts) => RefreshIndicator(
+                onRefresh: () => ref.refresh(accountsProvider.future),
+                child: _buildList(context, ref, accounts),
+              ),
               loading: () => const _AccountsSkeleton(),
               error: (e, _) => Center(child: Text('Erro: $e')),
             ),
@@ -74,23 +77,30 @@ class AccountsScreen extends ConsumerWidget {
 
   Widget _buildList(BuildContext context, WidgetRef ref, List<Account> accounts) {
     if (accounts.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.account_balance_wallet_outlined,
-                size: 52, color: AppTheme.textMuted),
-            const SizedBox(height: 12),
-            const Text('Nenhuma conta cadastrada',
-                style: TextStyle(color: AppTheme.textMuted, fontSize: 15)),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.add),
-              label: const Text('Criar conta'),
-              onPressed: () => _openForm(context, ref, null),
+      return CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverFillRemaining(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.account_balance_wallet_outlined,
+                      size: 52, color: AppTheme.textMuted),
+                  const SizedBox(height: 12),
+                  const Text('Nenhuma conta cadastrada',
+                      style: TextStyle(color: AppTheme.textMuted, fontSize: 15)),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.add),
+                    label: const Text('Criar conta'),
+                    onPressed: () => _openForm(context, ref, null),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       );
     }
 

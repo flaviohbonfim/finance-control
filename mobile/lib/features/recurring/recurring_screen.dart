@@ -53,7 +53,10 @@ class RecurringScreen extends ConsumerWidget {
           ),
           Expanded(
             child: recurringAsync.when(
-              data: (list) => _buildList(context, ref, list),
+              data: (list) => RefreshIndicator(
+                onRefresh: () => ref.refresh(recurringProvider.future),
+                child: _buildList(context, ref, list),
+              ),
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Erro: $e')),
             ),
@@ -66,22 +69,29 @@ class RecurringScreen extends ConsumerWidget {
   Widget _buildList(
       BuildContext context, WidgetRef ref, List<RecurringTransaction> list) {
     if (list.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.repeat_outlined, size: 52, color: AppTheme.textMuted),
-            const SizedBox(height: 12),
-            const Text('Nenhum recorrente cadastrado',
-                style: TextStyle(color: AppTheme.textMuted, fontSize: 15)),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.add),
-              label: const Text('Criar recorrente'),
-              onPressed: () => _openForm(context, ref, null),
+      return CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverFillRemaining(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.repeat_outlined, size: 52, color: AppTheme.textMuted),
+                  const SizedBox(height: 12),
+                  const Text('Nenhum recorrente cadastrado',
+                      style: TextStyle(color: AppTheme.textMuted, fontSize: 15)),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.add),
+                    label: const Text('Criar recorrente'),
+                    onPressed: () => _openForm(context, ref, null),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       );
     }
 
@@ -89,6 +99,7 @@ class RecurringScreen extends ConsumerWidget {
     final inactive = list.where((r) => !r.active).toList();
 
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
       children: [
         if (active.isNotEmpty) ...[

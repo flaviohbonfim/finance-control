@@ -56,7 +56,10 @@ class CategoriesScreen extends ConsumerWidget {
           const SizedBox(height: 8),
           Expanded(
             child: catsAsync.when(
-              data: (cats) => _buildList(context, ref, cats),
+              data: (cats) => RefreshIndicator(
+                onRefresh: () => ref.refresh(categoriesProvider(filter).future),
+                child: _buildList(context, ref, cats),
+              ),
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Erro: $e')),
             ),
@@ -68,26 +71,34 @@ class CategoriesScreen extends ConsumerWidget {
 
   Widget _buildList(BuildContext context, WidgetRef ref, List<Category> cats) {
     if (cats.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.category_outlined, size: 52, color: AppTheme.textMuted),
-            const SizedBox(height: 12),
-            const Text('Nenhuma categoria',
-                style: TextStyle(color: AppTheme.textMuted, fontSize: 15)),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.add),
-              label: const Text('Criar categoria'),
-              onPressed: () => _openForm(context, ref, null),
+      return CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverFillRemaining(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.category_outlined, size: 52, color: AppTheme.textMuted),
+                  const SizedBox(height: 12),
+                  const Text('Nenhuma categoria',
+                      style: TextStyle(color: AppTheme.textMuted, fontSize: 15)),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.add),
+                    label: const Text('Criar categoria'),
+                    onPressed: () => _openForm(context, ref, null),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       );
     }
 
     return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
       itemCount: cats.length,
       separatorBuilder: (_, __) => const SizedBox(height: 8),

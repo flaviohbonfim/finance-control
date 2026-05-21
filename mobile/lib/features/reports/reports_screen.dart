@@ -44,7 +44,9 @@ class ReportsScreen extends ConsumerWidget {
 
     return SafeArea(
       bottom: false,
-      child: CustomScrollView(
+      child: RefreshIndicator(
+        onRefresh: () => ref.refresh(monthlyReportProvider(year).future),
+        child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           // Header + year nav
@@ -119,6 +121,7 @@ class ReportsScreen extends ConsumerWidget {
 
           const SliverToBoxAdapter(child: SizedBox(height: 48)),
         ],
+      ),
       ),
     );
   }

@@ -70,7 +70,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               data: (data) {
                 final visible =
                     data.items.where((tx) => !_dismissedIds.contains(tx.id)).toList();
-                return _buildList(visible, params);
+                return RefreshIndicator(
+                  onRefresh: () => ref.refresh(transactionsProvider(params).future),
+                  child: _buildList(visible, params),
+                );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Erro: $e')),
@@ -117,16 +120,23 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
   Widget _buildList(List<Transaction> items, TransactionParams params) {
     if (items.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.receipt_long_outlined, size: 52, color: AppTheme.textMuted),
-            SizedBox(height: 12),
-            Text('Nenhuma transação encontrada',
-                style: TextStyle(color: AppTheme.textMuted, fontSize: 15)),
-          ],
-        ),
+      return const CustomScrollView(
+        physics: AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverFillRemaining(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.receipt_long_outlined, size: 52, color: AppTheme.textMuted),
+                  SizedBox(height: 12),
+                  Text('Nenhuma transação encontrada',
+                      style: TextStyle(color: AppTheme.textMuted, fontSize: 15)),
+                ],
+              ),
+            ),
+          ),
+        ],
       );
     }
 
@@ -422,6 +432,7 @@ class _TransactionFormState extends ConsumerState<_TransactionForm> {
       : DateTime.now();
   late int? _accountId = widget.existing?.accountId;
   late int? _categoryId = widget.existing?.categoryId;
+  int _installments = 1;
   bool _saving = false;
 
   @override
@@ -443,6 +454,7 @@ class _TransactionFormState extends ConsumerState<_TransactionForm> {
         'transaction_date': DateFormat('yyyy-MM-dd').format(_date),
         'account_id': _accountId,
         if (_categoryId != null) 'category_id': _categoryId,
+        if (widget.existing == null && _installments > 1) 'installments': _installments,
       };
       if (widget.existing != null) {
         await api.put('/transactions/${widget.existing!.id}', data: data);
@@ -536,16 +548,43 @@ class _TransactionFormState extends ConsumerState<_TransactionForm> {
               ),
               const SizedBox(height: 12),
               accountsAsync.when(
-                data: (accounts) => DropdownButtonFormField<int>(
-                  initialValue: _accountId,
-                  decoration: const InputDecoration(labelText: 'Conta'),
-                  dropdownColor: context.appBg,
-                  items: accounts
-                      .map((a) => DropdownMenuItem(value: a.id, child: Text(a.name)))
-                      .toList(),
-                  onChanged: (v) => setState(() => _accountId = v),
-                  validator: (v) => v == null ? 'Selecione a conta' : null,
-                ),
+                data: (accounts) {
+                  final selectedAccount = accounts.where((a) => a.id == _accountId).firstOrNull;
+                  final isCreditCard = selectedAccount?.isCreditCard ?? false;
+                  return Column(
+                    children: [
+                      DropdownButtonFormField<int>(
+                        initialValue: _accountId,
+                        decoration: const InputDecoration(labelText: 'Conta'),
+                        dropdownColor: context.appBg,
+                        items: accounts
+                            .map((a) => DropdownMenuItem(value: a.id, child: Text(a.name)))
+                            .toList(),
+                        onChanged: (v) => setState(() {
+                          _accountId = v;
+                          _installments = 1;
+                        }),
+                        validator: (v) => v == null ? 'Selecione a conta' : null,
+                      ),
+                      if (widget.existing == null && _type == 'expense' && isCreditCard) ...[
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<int>(
+                          initialValue: _installments,
+                          decoration: const InputDecoration(labelText: 'Parcelas'),
+                          dropdownColor: context.appBg,
+                          items: List.generate(
+                            48,
+                            (i) => DropdownMenuItem(
+                              value: i + 1,
+                              child: Text(i == 0 ? '1x (à vista)' : '${i + 1}x'),
+                            ),
+                          ),
+                          onChanged: (v) => setState(() => _installments = v ?? 1),
+                        ),
+                      ],
+                    ],
+                  );
+                },
                 loading: () => const LinearProgressIndicator(),
                 error: (_, __) => const SizedBox.shrink(),
               ),

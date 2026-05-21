@@ -32,7 +32,12 @@ class DashboardScreen extends ConsumerWidget {
 
     return SafeArea(
       bottom: false,
-      child: CustomScrollView(
+      child: RefreshIndicator(
+        onRefresh: () => Future.wait([
+          ref.refresh(dashboardProvider.future),
+          ref.refresh(creditCardBillsProvider.future),
+        ]),
+        child: CustomScrollView(
         physics: const BouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics()),
         slivers: [
@@ -50,6 +55,7 @@ class DashboardScreen extends ConsumerWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -292,7 +298,11 @@ class _StatCard extends StatelessWidget {
                 Text(label,
                     style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                 const SizedBox(height: 6),
-                CurrencyText(value, fontSize: wide ? 20 : 16, color: color),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: CurrencyText(value, fontSize: wide ? 20 : 16, color: color),
+                ),
               ],
             ),
           ),
