@@ -167,6 +167,7 @@ jobs:
           build-args: |
             APP_VERSION=${{ needs.version.outputs.version }}
             GITHUB_REPO=${{ github.repository }}
+            VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
