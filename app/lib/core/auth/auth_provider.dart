@@ -6,15 +6,36 @@ class AuthState {
   final User? user;
   final bool loading;
   final String? error;
+  final bool emailNotVerified;
+  final String? unverifiedEmail;
 
-  const AuthState({this.user, this.loading = false, this.error});
+  const AuthState({
+    this.user,
+    this.loading = false,
+    this.error,
+    this.emailNotVerified = false,
+    this.unverifiedEmail,
+  });
 
   bool get isAuthenticated => user != null;
-  AuthState copyWith({User? user, bool? loading, String? error, bool clearUser = false}) =>
+  bool get isVerified => user?.isVerified ?? false;
+
+  AuthState copyWith({
+    User? user,
+    bool? loading,
+    String? error,
+    bool? emailNotVerified,
+    String? unverifiedEmail,
+    bool clearUser = false,
+    bool clearError = false,
+    bool clearUnverified = false,
+  }) =>
       AuthState(
         user: clearUser ? null : (user ?? this.user),
         loading: loading ?? this.loading,
-        error: error,
+        error: clearError ? null : (error ?? this.error),
+        emailNotVerified: clearUnverified ? false : (emailNotVerified ?? this.emailNotVerified),
+        unverifiedEmail: clearUnverified ? null : (unverifiedEmail ?? this.unverifiedEmail),
       );
 }
 
@@ -34,20 +55,29 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   Future<void> login(String email, String password) async {
-    state = state.copyWith(loading: true, error: null);
+    state = state.copyWith(loading: true, error: null, clearError: true, clearUnverified: true);
     try {
       final res = await api.post('/auth/login', data: {'email': email, 'password': password});
       final token = res.data['access_token'];
       await api.saveToken(token);
       state = AuthState(user: User.fromJson(res.data['user']));
     } on Exception catch (e) {
-      final msg = _extractError(e);
-      state = state.copyWith(loading: false, error: msg);
+      final str = e.toString();
+      if (str.contains('403') || str.contains('EMAIL_NOT_VERIFIED')) {
+        state = state.copyWith(
+          loading: false,
+          clearError: true,
+          emailNotVerified: true,
+          unverifiedEmail: email,
+        );
+      } else {
+        state = state.copyWith(loading: false, error: _extractLoginError(e));
+      }
     }
   }
 
   Future<void> register(String name, String email, String password) async {
-    state = state.copyWith(loading: true, error: null);
+    state = state.copyWith(loading: true, error: null, clearError: true);
     try {
       final res = await api.post('/auth/register',
           data: {'name': name, 'email': email, 'password': password});
@@ -57,6 +87,60 @@ class AuthNotifier extends Notifier<AuthState> {
     } on Exception catch (e) {
       final msg = _extractApiError(e, fallback: 'Erro ao criar conta');
       state = state.copyWith(loading: false, error: msg);
+    }
+  }
+
+  Future<String?> verifyEmail(String email, String code) async {
+    try {
+      await api.post('/auth/verify-email', data: {'email': email, 'code': code});
+      if (state.user != null) {
+        // Refresh user to reflect is_verified=true
+        final res = await api.get('/auth/me');
+        state = AuthState(user: User.fromJson(res.data));
+      }
+      return null;
+    } on Exception catch (e) {
+      final str = e.toString();
+      if (str.contains('400')) return 'Código inválido ou expirado';
+      return 'Erro ao verificar email';
+    }
+  }
+
+  Future<String?> resendVerification(String email) async {
+    try {
+      await api.post('/auth/resend-verification', data: {'email': email});
+      return null;
+    } on Exception catch (e) {
+      final str = e.toString();
+      if (str.contains('429')) return 'Aguarde antes de solicitar novo código';
+      return null; // sempre silencioso para não revelar cadastros
+    }
+  }
+
+  Future<String?> forgotPassword(String email) async {
+    try {
+      await api.post('/auth/forgot-password', data: {'email': email});
+      return null;
+    } on Exception catch (e) {
+      final str = e.toString();
+      if (str.contains('429')) return 'Aguarde antes de solicitar novo código';
+      return null;
+    }
+  }
+
+  Future<String?> resetPassword(String email, String code, String newPassword) async {
+    try {
+      await api.post('/auth/reset-password', data: {
+        'email': email,
+        'code': code,
+        'new_password': newPassword,
+      });
+      return null;
+    } on Exception catch (e) {
+      final str = e.toString();
+      if (str.contains('400')) return 'Código inválido ou expirado';
+      if (str.contains('422')) return 'Senha deve ter no mínimo 6 caracteres';
+      return 'Erro ao redefinir senha';
     }
   }
 
@@ -90,9 +174,9 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
-  String _extractError(Exception e) {
+  String _extractLoginError(Exception e) {
     final str = e.toString();
-    if (str.contains('401') || str.contains('Incorrect')) return 'Email ou senha incorretos';
+    if (str.contains('401')) return 'Email ou senha inválidos';
     if (str.contains('SocketException') || str.contains('Connection')) return 'Sem conexão com o servidor';
     return 'Erro ao fazer login';
   }

@@ -14,6 +14,9 @@ import '../../features/settings/settings_screen.dart';
 import '../shell/main_shell.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/register_screen.dart';
+import '../../features/auth/verify_email_screen.dart';
+import '../../features/auth/forgot_password_screen.dart';
+import '../../features/auth/reset_password_screen.dart';
 
 Page<void> _fadePage(LocalKey key, Widget child) => CustomTransitionPage(
       key: key,
@@ -32,11 +35,18 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/dashboard',
     refreshListenable: authNotifier,
     redirect: (context, state) {
-      final loggedIn = authNotifier.value.isAuthenticated;
+      final auth = authNotifier.value;
+      final loggedIn = auth.isAuthenticated;
+      final verified = auth.isVerified;
       final loc = state.matchedLocation;
-      final onAuthScreen = loc == '/login' || loc == '/register';
-      if (!loggedIn && !onAuthScreen) return '/login';
-      if (loggedIn && onAuthScreen) return '/dashboard';
+
+      final onVerifyEmail = loc == '/verify-email';
+      final onPublicScreen = loc == '/login' || loc == '/register' ||
+          loc == '/forgot-password' || loc == '/reset-password';
+
+      if (!loggedIn && !onPublicScreen && !onVerifyEmail) return '/login';
+      if (loggedIn && !verified && !onVerifyEmail) return '/verify-email';
+      if (loggedIn && verified && (onPublicScreen || onVerifyEmail)) return '/dashboard';
       return null;
     },
     routes: [
@@ -47,6 +57,25 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/register',
         pageBuilder: (_, state) => _fadePage(state.pageKey, const RegisterScreen()),
+      ),
+      GoRoute(
+        path: '/verify-email',
+        pageBuilder: (_, state) {
+          final email = (state.extra as String?) ??
+              (state.uri.queryParameters['email'] ?? '');
+          return _fadePage(state.pageKey, VerifyEmailScreen(email: email));
+        },
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        pageBuilder: (_, state) => _fadePage(state.pageKey, const ForgotPasswordScreen()),
+      ),
+      GoRoute(
+        path: '/reset-password',
+        pageBuilder: (_, state) {
+          final email = (state.extra as String?) ?? '';
+          return _fadePage(state.pageKey, ResetPasswordScreen(email: email));
+        },
       ),
       GoRoute(
         path: '/settings',

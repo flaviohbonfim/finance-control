@@ -34,6 +34,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           _emailCtrl.text.trim(),
           _passCtrl.text,
         );
+    // Router redirect handles navigation to /verify-email when is_verified=false
   }
 
   @override

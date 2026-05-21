@@ -14,8 +14,8 @@ class VerifyEmailScreen extends ConsumerStatefulWidget {
 }
 
 class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
-  String get _email =>
-      _email.isNotEmpty ? _email : (ref.read(authProvider).user?.email ?? '');
+  late String _effectiveEmail;
+
   final _controllers = List.generate(6, (_) => TextEditingController());
   final _focusNodes = List.generate(6, (_) => FocusNode());
   final _keyFocusNodes = List.generate(6, (_) => FocusNode());
@@ -26,6 +26,20 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
   String? _resendMessage;
   int _cooldown = 0;
   Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _effectiveEmail = widget.email;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_effectiveEmail.isEmpty) {
+      _effectiveEmail = ref.read(authProvider).user?.email ?? '';
+    }
+  }
 
   @override
   void dispose() {
@@ -81,7 +95,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
       return;
     }
     setState(() { _loading = true; _error = null; });
-    final error = await ref.read(authProvider.notifier).verifyEmail(_email, code);
+    final error = await ref.read(authProvider.notifier).verifyEmail(_effectiveEmail, code);
     if (!mounted) return;
     if (error != null) {
       for (final c in _controllers) { c.clear(); }
@@ -93,7 +107,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
   Future<void> _resend() async {
     if (_cooldown > 0 || _resendLoading) return;
     setState(() { _resendLoading = true; _resendMessage = null; });
-    await ref.read(authProvider.notifier).resendVerification(_email);
+    await ref.read(authProvider.notifier).resendVerification(_effectiveEmail);
     if (!mounted) return;
     setState(() { _resendLoading = false; _resendMessage = 'Código reenviado!'; });
     _startCooldown();
@@ -125,7 +139,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                   const Text('Verifique seu email', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 8),
                   Text(
-                    'Enviamos um código de 6 dígitos para\n${_email}',
+                    'Enviamos um código de 6 dígitos para\n$_effectiveEmail',
                     style: const TextStyle(color: AppTheme.textSecondary),
                   ),
                   const SizedBox(height: 32),

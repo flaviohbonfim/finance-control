@@ -16,14 +16,16 @@ class User {
   final String name;
   final String email;
   final bool isActive;
+  final bool isVerified;
 
-  User({required this.id, required this.name, required this.email, required this.isActive});
+  User({required this.id, required this.name, required this.email, required this.isActive, required this.isVerified});
 
   factory User.fromJson(Map<String, dynamic> j) => User(
         id: j['id'],
         name: j['name'],
         email: j['email'],
         isActive: j['is_active'] ?? true,
+        isVerified: j['is_verified'] ?? false,
       );
 }
 
