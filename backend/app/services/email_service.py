@@ -56,7 +56,6 @@ async def send_verification_code(email: str, name: str, code: str) -> None:
         await fm.send_message(message)
     except Exception:
         logger.exception("Falha ao enviar email de verificação para %s", email)
-        raise
 
 
 async def send_reset_code(email: str, name: str, code: str) -> None:
