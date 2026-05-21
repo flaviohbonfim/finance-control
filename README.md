@@ -1,20 +1,20 @@
 # Finance Control
 
-Aplicação de controle financeiro pessoal com dashboard web, app mobile nativo e assistente de IA acessível via chat e Telegram.
+Aplicação de controle financeiro pessoal com dashboard web, app multiplataforma nativo e assistente de IA acessível via chat e Telegram.
 
 ---
 
 ## Funcionalidades
 
 - **Dashboard** — saldo total, receitas e despesas do mês, gráficos de evolução e distribuição por categoria
-- **Transações** — lançamento manual de receitas e despesas com categorização e filtros avançados
+- **Transações** — lançamento manual de receitas e despesas com categorização, parcelas e filtros avançados
 - **Contas** — múltiplas contas (corrente, poupança, cartão de crédito, etc.) com saldo em tempo real
 - **Categorias** — categorias personalizadas com cor para receitas e despesas
 - **Recorrências** — transações recorrentes mensais com lançamento em um clique
 - **Relatórios** — resumo mensal anual e detalhamento por categoria
 - **Assistente de IA** — chat com Groq (Llama 3.3 70B) que consulta e cria transações por linguagem natural
 - **Temas** — 9 temas visuais (Claro, Escuro, Dracula, Nord, Catppuccin, Tokyo Night, Rose Piné, Monokai, Solarized)
-- **App mobile** — aplicativo Flutter para iOS e Android com todas as funcionalidades do web
+- **App multiplataforma** — aplicativo Flutter para iOS, Android, macOS, Windows e Linux com layout adaptativo
 - **Telegram Bot** — acesso ao assistente de IA diretamente pelo Telegram, vinculado à conta do usuário
 
 ---
@@ -35,14 +35,16 @@ Aplicação de controle financeiro pessoal com dashboard web, app mobile nativo 
 | Lucide React | Ícones |
 | React Markdown | Renderização de markdown no chat |
 
-### Mobile (iOS & Android)
+### App (iOS, Android, macOS, Windows, Linux)
 | Tecnologia | Uso |
 |---|---|
 | Flutter 3 + Dart | UI multiplataforma |
 | Riverpod | Estado global e providers |
 | GoRouter | Navegação |
 | Dio | HTTP client |
-| FlutterSecureStorage | Persistência do token JWT |
+| FlutterSecureStorage | Persistência do token JWT (mobile) |
+| SharedPreferences | Persistência do token JWT (desktop) |
+| window_manager | Tamanho e título da janela no desktop |
 | fl_chart | Gráficos |
 | flutter_markdown | Renderização de markdown no chat |
 | url_launcher | Abertura de links externos (Telegram) |
@@ -116,20 +118,36 @@ npm run dev
 
 > O frontend usa proxy Vite: chamadas para `/api` são redirecionadas para `http://localhost:8000`.
 
-### 4. App Mobile
+### 4. App (mobile e desktop)
 
 ```bash
-cd mobile
+cd app
 flutter pub get
 flutter run          # seleciona o dispositivo interativamente
 flutter run -d <id>  # dispositivo específico (use: flutter devices)
 ```
+
+Plataformas suportadas:
+
+| Plataforma | Comando |
+|---|---|
+| Android | `flutter run -d android` |
+| iOS | `flutter run -d ios` |
+| macOS | `flutter run -d macos` |
+| Windows | `flutter run -d windows` |
+| Linux | `flutter run -d linux` |
 
 Para gerar APK de release:
 
 ```bash
 flutter build apk --release
 # Saída: build/app/outputs/flutter-apk/app-release.apk
+```
+
+Para gerar app macOS:
+
+```bash
+flutter build macos --release
 ```
 
 ### 5. Telegram Bot
@@ -195,7 +213,7 @@ TELEGRAM_INTERNAL_SECRET=  # mesmo valor do backend
 O deploy usa Docker Compose com imagens buildadas localmente e push para o servidor via SSH. O pipeline do GitHub Actions:
 
 1. **CI** (`ci.yml`) — roda `ruff` (lint) e `npm run build` (TypeScript + Vite) em cada push
-2. **Release** (`release.yml`) — executado após o CI passar; faz bump de versão, gera tag e release no GitHub e publica imagens Docker — **ignorado automaticamente se apenas o app mobile foi alterado**, pois mudanças em `mobile/` não afetam o servidor
+2. **Release** (`release.yml`) — executado após o CI passar; faz bump de versão, gera tag e release no GitHub e publica imagens Docker — **ignorado automaticamente se apenas o app foi alterado**, pois mudanças em `app/` não afetam o servidor
 
 Para deploy manual:
 
@@ -227,11 +245,16 @@ finance-control/
 │   │   ├── store/              # Zustand stores (auth, tema)
 │   │   └── types/              # TypeScript types
 │   └── package.json
-├── mobile/
+├── app/                        # Flutter app (iOS, Android, macOS, Windows, Linux)
 │   ├── lib/
-│   │   ├── core/               # Auth, API client, tema, router, shell
+│   │   ├── core/               # Auth, API client, tema, router, shell, utils
 │   │   ├── features/           # Telas (dashboard, transactions, accounts, ...)
 │   │   └── shared/             # Widgets reutilizáveis
+│   ├── android/
+│   ├── ios/
+│   ├── macos/
+│   ├── windows/
+│   ├── linux/
 │   └── pubspec.yaml
 ├── telegram-bot/
 │   ├── bot.py                  # Bot principal (polling + handlers)

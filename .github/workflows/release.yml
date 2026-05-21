@@ -37,15 +37,15 @@ jobs:
             RANGE="HEAD"
           fi
 
-          # Count files changed outside of mobile/
-          NON_MOBILE=$(git diff --name-only ${RANGE} | grep -vE '^mobile/' | wc -l | tr -d ' ')
+          # Count files changed outside of app/
+          NON_APP=$(git diff --name-only ${RANGE} | grep -vE '^app/' | wc -l | tr -d ' ')
 
-          if [ "$NON_MOBILE" -eq 0 ]; then
+          if [ "$NON_APP" -eq 0 ]; then
             echo "should_release=false" >> $GITHUB_OUTPUT
-            echo "Only mobile/ changes detected — skipping release"
+            echo "Only app/ changes detected — skipping release"
           else
             echo "should_release=true" >> $GITHUB_OUTPUT
-            echo "Server-side changes detected ($NON_MOBILE files) — proceeding with release"
+            echo "Server-side changes detected ($NON_APP files) — proceeding with release"
           fi
 
   version:
