@@ -21,11 +21,15 @@ def upgrade() -> None:
     op.create_unique_constraint("uq_users_google_id", "users", ["google_id"])
     op.create_index("ix_users_google_id", "users", ["google_id"])
 
-    op.add_column("users", sa.Column("is_verified", sa.Boolean(), nullable=False, server_default=sa.false()))
+    op.add_column(
+        "users", sa.Column("is_verified", sa.Boolean(), nullable=False, server_default=sa.false())
+    )
     op.add_column("users", sa.Column("verification_code", sa.String(6), nullable=True))
     op.add_column("users", sa.Column("verification_code_expires_at", sa.DateTime(), nullable=True))
     op.add_column("users", sa.Column("reset_password_code", sa.String(6), nullable=True))
-    op.add_column("users", sa.Column("reset_password_code_expires_at", sa.DateTime(), nullable=True))
+    op.add_column(
+        "users", sa.Column("reset_password_code_expires_at", sa.DateTime(), nullable=True)
+    )
 
 
 def downgrade() -> None:

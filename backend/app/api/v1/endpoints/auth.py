@@ -108,9 +108,8 @@ async def resend_verification(
 
     now = _now()
     # Cooldown: não reenviar se o código atual ainda não expirou o cooldown
-    if (
-        user.verification_code_expires_at is not None
-        and user.verification_code_expires_at > now + (_CODE_TTL - _RESEND_COOLDOWN)
+    if user.verification_code_expires_at is not None and user.verification_code_expires_at > now + (
+        _CODE_TTL - _RESEND_COOLDOWN
     ):
         raise HTTPException(status_code=429, detail="Aguarde antes de solicitar novo código")
 
@@ -231,8 +230,8 @@ async def login(payload: UserLogin, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == payload.email))
     user = result.scalar_one_or_none()
 
-    pw_ok = user and user.hashed_password and verify_password(
-        payload.password, user.hashed_password
+    pw_ok = (
+        user and user.hashed_password and verify_password(payload.password, user.hashed_password)
     )
     if not pw_ok:
         raise HTTPException(status_code=401, detail="Email ou senha inválidos")
