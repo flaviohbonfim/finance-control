@@ -9,10 +9,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.user import User
-from app.core.config import settings
 from app.schemas.user import (
     ForgotPasswordRequest,
     GoogleAuthRequest,
@@ -231,7 +231,10 @@ async def login(payload: UserLogin, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == payload.email))
     user = result.scalar_one_or_none()
 
-    if not user or not user.hashed_password or not verify_password(payload.password, user.hashed_password):
+    pw_ok = user and user.hashed_password and verify_password(
+        payload.password, user.hashed_password
+    )
+    if not pw_ok:
         raise HTTPException(status_code=401, detail="Email ou senha inválidos")
 
     if not user.is_verified:
@@ -270,7 +273,10 @@ async def change_password(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if not current_user.hashed_password or not verify_password(payload.current_password, current_user.hashed_password):
+    pw_ok = current_user.hashed_password and verify_password(
+        payload.current_password, current_user.hashed_password
+    )
+    if not pw_ok:
         raise HTTPException(status_code=400, detail="Senha atual incorreta")
     if len(payload.new_password) < 6:
         raise HTTPException(status_code=400, detail="Nova senha deve ter no mínimo 6 caracteres")

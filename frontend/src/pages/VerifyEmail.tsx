@@ -60,6 +60,7 @@ export default function VerifyEmail() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (code.length < 6) { setError("Digite os 6 dígitos do código"); return; }
+    if (!user) return;
     setError("");
     try {
       await verifyEmail.mutateAsync({ email: user.email, code });
