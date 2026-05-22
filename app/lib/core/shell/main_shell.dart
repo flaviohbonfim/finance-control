@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../api/providers.dart';
 import '../utils/platform_utils.dart';
 import '../theme/app_theme.dart';
 
@@ -94,12 +96,24 @@ class _DesktopShell extends StatelessWidget {
   }
 }
 
-class _Sidebar extends StatelessWidget {
+class _Sidebar extends ConsumerWidget {
   final int current;
   const _Sidebar({required this.current});
 
+  void _refresh(WidgetRef ref) {
+    ref.invalidate(accountsProvider);
+    ref.invalidate(categoriesProvider);
+    ref.invalidate(transactionsProvider);
+    ref.invalidate(recurringProvider);
+    ref.invalidate(dashboardProvider);
+    ref.invalidate(creditCardBillsProvider);
+    ref.invalidate(monthlyReportProvider);
+    ref.invalidate(monthlyDetailProvider);
+    ref.invalidate(invoiceProvider);
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     return SizedBox(
       width: 200,
@@ -150,18 +164,74 @@ class _Sidebar extends StatelessWidget {
               }),
             ),
           ),
-          // Settings at bottom
+          // Settings + Refresh at bottom
           const Divider(height: 1),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            child: _NavItem(
-              icon: Icons.settings_outlined,
-              label: 'Configurações',
-              selected: false,
-              onTap: () => context.push('/settings'),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: [
+                Tooltip(
+                  message: 'Configurações',
+                  child: InkWell(
+                    onTap: () => context.push('/settings'),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Icon(Icons.settings_outlined, size: 20, color: AppTheme.textSecondary),
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                _RefreshButton(onRefresh: () => _refresh(ref)),
+              ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _RefreshButton extends StatefulWidget {
+  final VoidCallback onRefresh;
+  const _RefreshButton({required this.onRefresh});
+
+  @override
+  State<_RefreshButton> createState() => _RefreshButtonState();
+}
+
+class _RefreshButtonState extends State<_RefreshButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 600),
+  );
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _tap() {
+    _ctrl.forward(from: 0);
+    widget.onRefresh();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Atualizar dados',
+      child: InkWell(
+        onTap: _tap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: RotationTransition(
+            turns: _ctrl,
+            child: Icon(Icons.refresh, size: 20, color: AppTheme.textSecondary),
+          ),
+        ),
       ),
     );
   }

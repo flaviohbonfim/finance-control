@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { User } from "@/types";
+import { queryClient } from "@/main";
 
 interface AuthState {
   token: string | null;
@@ -17,7 +18,10 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       setAuth: (token, user) => set({ token, user }),
       updateUser: (user) => set({ user }),
-      logout: () => set({ token: null, user: null }),
+      logout: () => {
+        queryClient.clear();
+        set({ token: null, user: null });
+      },
     }),
     { name: "finance-auth" }
   )

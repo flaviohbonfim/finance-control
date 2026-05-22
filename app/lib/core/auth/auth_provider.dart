@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../api/api_client.dart';
 import '../api/models.dart';
+import '../api/providers.dart';
 
 const _googleClientId = String.fromEnvironment('GOOGLE_CLIENT_ID', defaultValue: '');
 const _googleIosClientId = String.fromEnvironment('GOOGLE_IOS_CLIENT_ID', defaultValue: '');
@@ -71,6 +72,7 @@ class AuthNotifier extends Notifier<AuthState> {
       final res = await api.post('/auth/login', data: {'email': email, 'password': password});
       final token = res.data['access_token'];
       await api.saveToken(token);
+      _invalidateData();
       state = AuthState(user: User.fromJson(res.data['user']));
     } on Exception catch (e) {
       final str = e.toString();
@@ -94,6 +96,7 @@ class AuthNotifier extends Notifier<AuthState> {
           data: {'name': name, 'email': email, 'password': password});
       final token = res.data['access_token'];
       await api.saveToken(token);
+      _invalidateData();
       state = AuthState(user: User.fromJson(res.data['user']));
     } on Exception catch (e) {
       final msg = _extractApiError(e, fallback: 'Erro ao criar conta');
@@ -172,6 +175,7 @@ class AuthNotifier extends Notifier<AuthState> {
       final res = await api.post('/auth/google', data: {'id_token': idToken});
       final token = res.data['access_token'];
       await api.saveToken(token);
+      _invalidateData();
       state = AuthState(user: User.fromJson(res.data['user']));
     } on Exception catch (e) {
       state = state.copyWith(
@@ -179,6 +183,18 @@ class AuthNotifier extends Notifier<AuthState> {
         error: _extractApiError(e, fallback: 'Erro ao entrar com Google'),
       );
     }
+  }
+
+  void _invalidateData() {
+    ref.invalidate(accountsProvider);
+    ref.invalidate(categoriesProvider);
+    ref.invalidate(transactionsProvider);
+    ref.invalidate(recurringProvider);
+    ref.invalidate(dashboardProvider);
+    ref.invalidate(creditCardBillsProvider);
+    ref.invalidate(monthlyReportProvider);
+    ref.invalidate(monthlyDetailProvider);
+    ref.invalidate(invoiceProvider);
   }
 
   Future<void> logout() async {
