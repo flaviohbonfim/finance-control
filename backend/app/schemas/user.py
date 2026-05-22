@@ -27,7 +27,6 @@ class UserOut(BaseModel):
 
 class UserUpdate(BaseModel):
     name: str
-    email: EmailStr
 
 
 class UserChangePassword(BaseModel):

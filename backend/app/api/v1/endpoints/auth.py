@@ -254,13 +254,7 @@ async def update_me(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if payload.email != current_user.email:
-        existing = await db.execute(select(User).where(User.email == payload.email))
-        if existing.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail="Email já cadastrado por outro usuário")
-
     current_user.name = payload.name
-    current_user.email = payload.email
     await db.commit()
     await db.refresh(current_user)
     return current_user

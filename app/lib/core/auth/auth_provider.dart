@@ -186,9 +186,9 @@ class AuthNotifier extends Notifier<AuthState> {
     state = const AuthState();
   }
 
-  Future<String?> updateProfile({required String name, required String email}) async {
+  Future<String?> updateProfile({required String name}) async {
     try {
-      final res = await api.put('/auth/me', data: {'name': name, 'email': email});
+      final res = await api.put('/auth/me', data: {'name': name});
       state = state.copyWith(user: User.fromJson(res.data));
       return null;
     } on Exception catch (e) {

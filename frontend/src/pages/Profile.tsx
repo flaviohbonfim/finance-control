@@ -10,7 +10,6 @@ import api from "@/services/api";
 
 interface ProfileForm {
   name: string;
-  email: string;
 }
 
 interface PasswordForm {
@@ -25,7 +24,7 @@ function ProfileSection() {
   const [success, setSuccess] = useState(false);
 
   const { register, handleSubmit, formState: { errors } } = useForm<ProfileForm>({
-    defaultValues: { name: user?.name ?? "", email: user?.email ?? "" },
+    defaultValues: { name: user?.name ?? "" },
   });
 
   const onSubmit = async (data: ProfileForm) => {
@@ -44,12 +43,12 @@ function ProfileSection() {
           error={errors.name?.message}
           {...register("name", { required: "Nome obrigatório" })}
         />
-        <Input
-          label="Email"
-          type="email"
-          error={errors.email?.message}
-          {...register("email", { required: "Email obrigatório" })}
-        />
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Email</label>
+          <p className="text-sm text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+            {user?.email}
+          </p>
+        </div>
         <div className="flex items-center gap-3">
           <Button type="submit" size="sm" loading={updateProfile.isPending}>
             Salvar alterações

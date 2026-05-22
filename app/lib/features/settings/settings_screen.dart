@@ -301,7 +301,6 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
     });
     final err = await ref.read(authProvider.notifier).updateProfile(
           name: _nameCtrl.text.trim(),
-          email: _emailCtrl.text.trim(),
         );
     if (!mounted) return;
     if (err != null) {
@@ -335,13 +334,12 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
             const SizedBox(height: 12),
             TextFormField(
               controller: _emailCtrl,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(labelText: 'E-mail'),
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Informe o e-mail';
-                if (!v.contains('@')) return 'E-mail inválido';
-                return null;
-              },
+              readOnly: true,
+              decoration: InputDecoration(
+                labelText: 'E-mail',
+                filled: true,
+                fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha(80),
+              ),
             ),
             if (_error != null) ...[
               const SizedBox(height: 10),
