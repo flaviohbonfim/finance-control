@@ -5,7 +5,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Form, HTTPException
 from fastapi.responses import RedirectResponse
 from jose import jwt
 from pydantic import BaseModel
@@ -134,41 +134,39 @@ async def confirm(
 # ── POST /oauth/token ─────────────────────────────────────────────────────────
 
 
-class OAuthTokenRequest(BaseModel):
-    grant_type: str
-    code: str | None = None
-    redirect_uri: str | None = None
-    code_verifier: str | None = None
-    client_id: str | None = None
-    refresh_token: str | None = None
-
-
 @router.post("/token")
 async def token(
-    payload: OAuthTokenRequest,
+    grant_type: str = Form(...),
+    code: str | None = Form(None),
+    redirect_uri: str | None = Form(None),
+    code_verifier: str | None = Form(None),
+    client_id: str | None = Form(None),
+    refresh_token: str | None = Form(None),
     db: AsyncSession = Depends(get_db),
 ):
-    if payload.grant_type == "authorization_code":
-        return await _exchange_code(payload, db)
-    if payload.grant_type == "refresh_token":
-        return await _refresh(payload)
+    if grant_type == "authorization_code":
+        return await _exchange_code(code, redirect_uri, code_verifier, db)
+    if grant_type == "refresh_token":
+        return await _refresh(refresh_token)
     raise HTTPException(status_code=400, detail="unsupported grant_type")
 
 
-async def _exchange_code(payload: OAuthTokenRequest, db: AsyncSession):
-    if not payload.code or not payload.redirect_uri or not payload.code_verifier:
+async def _exchange_code(
+    code: str | None, redirect_uri: str | None, code_verifier: str | None, db: AsyncSession
+):
+    if not code or not redirect_uri or not code_verifier:
         raise HTTPException(status_code=400, detail="code, redirect_uri and code_verifier required")
 
-    code_hash = _hash_code(payload.code)
+    code_hash = _hash_code(code)
     result = await db.execute(select(OAuthCode).where(OAuthCode.code_hash == code_hash))
     record = result.scalar_one_or_none()
 
     now = _now()
     if not record or record.used or record.expires_at < now:
         raise HTTPException(status_code=400, detail="invalid or expired code")
-    if record.redirect_uri != payload.redirect_uri:
+    if record.redirect_uri != redirect_uri:
         raise HTTPException(status_code=400, detail="redirect_uri mismatch")
-    if not _verify_pkce(payload.code_verifier, record.code_challenge):
+    if not _verify_pkce(code_verifier, record.code_challenge):
         raise HTTPException(status_code=400, detail="invalid code_verifier")
 
     record.used = True
@@ -182,13 +180,11 @@ async def _exchange_code(payload: OAuthTokenRequest, db: AsyncSession):
     }
 
 
-async def _refresh(payload: OAuthTokenRequest):
-    if not payload.refresh_token:
+async def _refresh(refresh_token: str | None):
+    if not refresh_token:
         raise HTTPException(status_code=400, detail="refresh_token required")
     try:
-        data = jwt.decode(
-            payload.refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
+        data = jwt.decode(refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         if data.get("type") != "mcp_refresh":
             raise ValueError
         user_id = int(data["sub"])
