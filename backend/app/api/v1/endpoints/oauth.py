@@ -58,6 +58,7 @@ def _create_mcp_refresh_token(user_id: int) -> str:
 
 # ── GET /oauth/authorize ──────────────────────────────────────────────────────
 
+
 @router.get("/authorize")
 async def authorize(
     response_type: str = "",
@@ -97,6 +98,7 @@ async def authorize(
 
 # ── POST /oauth/confirm ───────────────────────────────────────────────────────
 
+
 class OAuthConfirmRequest(BaseModel):
     client_id: str
     redirect_uri: str
@@ -134,6 +136,7 @@ async def confirm(
 
 
 # ── POST /oauth/token ─────────────────────────────────────────────────────────
+
 
 class OAuthTokenRequest(BaseModel):
     grant_type: str
