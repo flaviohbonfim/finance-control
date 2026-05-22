@@ -59,7 +59,7 @@ export const useGoogleAuth = () =>
 
 export const useUpdateProfile = () =>
   useMutation({
-    mutationFn: (data: { name: string; email: string }) =>
+    mutationFn: (data: { name: string }) =>
       api.put<import("@/types").User>("/auth/me", data).then((r) => r.data),
   });
 
