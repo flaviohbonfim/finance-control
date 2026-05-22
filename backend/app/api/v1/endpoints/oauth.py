@@ -70,8 +70,6 @@ async def authorize(
 ):
     if response_type != "code":
         raise HTTPException(status_code=400, detail="response_type must be 'code'")
-    if client_id != _SUPPORTED_CLIENT_ID:
-        raise HTTPException(status_code=400, detail="unknown client_id")
     if not redirect_uri:
         raise HTTPException(status_code=400, detail="redirect_uri required")
     if not state:
@@ -113,8 +111,6 @@ async def confirm(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if payload.client_id != _SUPPORTED_CLIENT_ID:
-        raise HTTPException(status_code=400, detail="unknown client_id")
     if payload.code_challenge_method != "S256":
         raise HTTPException(status_code=400, detail="code_challenge_method must be S256")
 
