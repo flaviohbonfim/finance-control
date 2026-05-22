@@ -4,12 +4,27 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/platform_utils.dart';
+import 'google_sign_in_button.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
   @override
   ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
+}
+
+class _OrDivider extends StatelessWidget {
+  const _OrDivider();
+  @override
+  Widget build(BuildContext context) => Row(children: [
+        const Expanded(child: Divider()),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text('ou', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+        ),
+        const Expanded(child: Divider()),
+      ]);
 }
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
@@ -176,6 +191,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         )
                       : const Text('Criar conta'),
                 ),
+
+                if (supportsGoogleSignIn) ...[
+                  const SizedBox(height: 16),
+                  const _OrDivider(),
+                  const SizedBox(height: 16),
+                  GoogleSignInButton(
+                    loading: auth.loading,
+                    onPressed: () => ref.read(authProvider.notifier).googleSignIn(),
+                  ),
+                ],
+
                 const SizedBox(height: 16),
 
                 // Login link

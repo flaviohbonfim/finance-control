@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 bool get isDesktop =>
     !kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
 
+bool get supportsGoogleSignIn =>
+    !kIsWeb && (Platform.isAndroid || Platform.isIOS || Platform.isMacOS);
+
 Future<T?> showAdaptiveSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,

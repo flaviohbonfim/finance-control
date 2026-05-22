@@ -1,6 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../api/api_client.dart';
 import '../api/models.dart';
+
+const _googleClientId = String.fromEnvironment('GOOGLE_CLIENT_ID', defaultValue: '');
+const _googleIosClientId = String.fromEnvironment('GOOGLE_IOS_CLIENT_ID', defaultValue: '');
+
+GoogleSignIn? _googleSignInInstance;
+GoogleSignIn _getGoogleSignIn() => _googleSignInInstance ??= GoogleSignIn(
+      clientId: _googleIosClientId.isNotEmpty ? _googleIosClientId : null,
+      serverClientId: _googleClientId.isNotEmpty ? _googleClientId : null,
+      scopes: ['email', 'profile'],
+    );
 
 class AuthState {
   final User? user;
@@ -141,6 +152,32 @@ class AuthNotifier extends Notifier<AuthState> {
       if (str.contains('400')) return 'Código inválido ou expirado';
       if (str.contains('422')) return 'Senha deve ter no mínimo 6 caracteres';
       return 'Erro ao redefinir senha';
+    }
+  }
+
+  Future<void> googleSignIn() async {
+    state = state.copyWith(loading: true, clearError: true, clearUnverified: true);
+    try {
+      final account = await _getGoogleSignIn().signIn();
+      if (account == null) {
+        state = state.copyWith(loading: false);
+        return;
+      }
+      final googleAuth = await account.authentication;
+      final idToken = googleAuth.idToken;
+      if (idToken == null) {
+        state = state.copyWith(loading: false, error: 'Falha na autenticação Google');
+        return;
+      }
+      final res = await api.post('/auth/google', data: {'id_token': idToken});
+      final token = res.data['access_token'];
+      await api.saveToken(token);
+      state = AuthState(user: User.fromJson(res.data['user']));
+    } on Exception catch (e) {
+      state = state.copyWith(
+        loading: false,
+        error: _extractApiError(e, fallback: 'Erro ao entrar com Google'),
+      );
     }
   }
 
