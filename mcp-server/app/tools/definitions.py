@@ -86,4 +86,15 @@ TOOLS = [
         ),
         "inputSchema": {"type": "object", "properties": {}, "required": []},
     },
+    {
+        "name": "get_credit_card_bills",
+        "description": (
+            "Retorna as faturas dos cartões de crédito do usuário. "
+            "Para cada cartão mostra o valor da fatura atual (período já fechado ou em aberto) "
+            "e da próxima fatura, com as datas de cada período. "
+            "Use esta ferramenta quando o usuário perguntar sobre fatura, valor a pagar, "
+            "próxima fatura ou débitos no cartão de crédito."
+        ),
+        "inputSchema": {"type": "object", "properties": {}, "required": []},
+    },
 ]

@@ -25,7 +25,11 @@ async def execute_tool(name: str, arguments: dict, token: str) -> str:
             return "Nenhuma conta cadastrada."
         lines = ["**Contas:**"]
         for acc in data:
-            balance = f"R$ {float(acc['balance']):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            balance = (
+                f"R$ {float(acc['balance']):,.2f}".replace(",", "X")
+                .replace(".", ",")
+                .replace("X", ".")
+            )
             lines.append(f"- {acc['name']} ({acc['type']}): {balance}")
         return "\n".join(lines)
 
@@ -43,9 +47,15 @@ async def execute_tool(name: str, arguments: dict, token: str) -> str:
         lines = [f"**{len(items)} transação(ões) encontrada(s):**"]
         for t in items:
             sign = "+" if t["type"] == "income" else "-"
-            amount = f"R$ {float(t['amount']):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            amount = (
+                f"R$ {float(t['amount']):,.2f}".replace(",", "X")
+                .replace(".", ",")
+                .replace("X", ".")
+            )
             cat = t.get("category", {}) or {}
-            cat_name = cat.get("name", "Sem categoria") if isinstance(cat, dict) else "Sem categoria"
+            cat_name = (
+                cat.get("name", "Sem categoria") if isinstance(cat, dict) else "Sem categoria"
+            )
             lines.append(
                 f"- {t['transaction_date']} | {sign}{amount} | {t['description']} | {cat_name}"
             )
@@ -57,8 +67,16 @@ async def execute_tool(name: str, arguments: dict, token: str) -> str:
         data = await call_backend(
             "/api/v1/reports/monthly-summary", token, {"month": month, "year": year}
         )
-        income = f"R$ {float(data.get('total_income', 0)):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        expense = f"R$ {float(data.get('total_expense', 0)):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        income = (
+            f"R$ {float(data.get('total_income', 0)):,.2f}".replace(",", "X")
+            .replace(".", ",")
+            .replace("X", ".")
+        )
+        expense = (
+            f"R$ {float(data.get('total_expense', 0)):,.2f}".replace(",", "X")
+            .replace(".", ",")
+            .replace("X", ".")
+        )
         balance = float(data.get("total_income", 0)) - float(data.get("total_expense", 0))
         bal_str = f"R$ {balance:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
         lines = [
@@ -71,7 +89,11 @@ async def execute_tool(name: str, arguments: dict, token: str) -> str:
         if by_cat:
             lines.append("\n**Por categoria:**")
             for c in by_cat:
-                amt = f"R$ {float(c['total']):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                amt = (
+                    f"R$ {float(c['total']):,.2f}".replace(",", "X")
+                    .replace(".", ",")
+                    .replace("X", ".")
+                )
                 lines.append(f"- {c['name']}: {amt}")
         return "\n".join(lines)
 
@@ -95,15 +117,31 @@ async def execute_tool(name: str, arguments: dict, token: str) -> str:
             return "Nenhuma transação recorrente ativa."
         lines = ["**Recorrentes:**"]
         for r in data:
-            amount = f"R$ {float(r['amount']):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            amount = (
+                f"R$ {float(r['amount']):,.2f}".replace(",", "X")
+                .replace(".", ",")
+                .replace("X", ".")
+            )
             lines.append(f"- {r['description']}: {amount} ({r['frequency']})")
         return "\n".join(lines)
 
     if name == "get_dashboard":
         data = await call_backend("/api/v1/reports/dashboard", token)
-        total_bal = f"R$ {float(data.get('total_balance', 0)):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        income = f"R$ {float(data.get('monthly_income', 0)):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        expense = f"R$ {float(data.get('monthly_expense', 0)):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        total_bal = (
+            f"R$ {float(data.get('total_balance', 0)):,.2f}".replace(",", "X")
+            .replace(".", ",")
+            .replace("X", ".")
+        )
+        income = (
+            f"R$ {float(data.get('monthly_income', 0)):,.2f}".replace(",", "X")
+            .replace(".", ",")
+            .replace("X", ".")
+        )
+        expense = (
+            f"R$ {float(data.get('monthly_expense', 0)):,.2f}".replace(",", "X")
+            .replace(".", ",")
+            .replace("X", ".")
+        )
         lines = [
             f"**Dashboard — {today.strftime('%B/%Y')}:**",
             f"- Saldo total: {total_bal}",
@@ -115,8 +153,38 @@ async def execute_tool(name: str, arguments: dict, token: str) -> str:
             lines.append("\n**Últimas transações:**")
             for t in recent[:5]:
                 sign = "+" if t["type"] == "income" else "-"
-                amount = f"R$ {float(t['amount']):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                amount = (
+                    f"R$ {float(t['amount']):,.2f}".replace(",", "X")
+                    .replace(".", ",")
+                    .replace("X", ".")
+                )
                 lines.append(f"- {t['transaction_date']} | {sign}{amount} | {t['description']}")
+        return "\n".join(lines)
+
+    if name == "get_credit_card_bills":
+        data = await call_backend("/api/v1/reports/credit-card-bills", token)
+        cards = data if isinstance(data, list) else data.get("cards", [])
+        if not cards:
+            return "Nenhum cartão de crédito encontrado."
+        lines = ["**Faturas dos cartões de crédito:**"]
+        for card in cards:
+            lines.append(
+                f"\n**{card['name']}** (fecha dia {card['closing_day']}, vence dia {card['due_day']})"
+            )
+            current = card.get("current_bill") or {}
+            nxt = card.get("next_bill") or {}
+            cur_total = (
+                f"R$ {float(current.get('total', 0)):,.2f}".replace(",", "X")
+                .replace(".", ",")
+                .replace("X", ".")
+            )
+            nxt_total = (
+                f"R$ {float(nxt.get('total', 0)):,.2f}".replace(",", "X")
+                .replace(".", ",")
+                .replace("X", ".")
+            )
+            lines.append(f"- Fatura atual ({current.get('period', '-')}): {cur_total}")
+            lines.append(f"- Próxima fatura ({nxt.get('period', '-')}): {nxt_total}")
         return "\n".join(lines)
 
     return f"Ferramenta '{name}' não reconhecida."
