@@ -24,10 +24,11 @@ def _validate_token(authorization: str | None) -> int | None:
 
 
 def _unauthorized():
+    resource_metadata = f"{settings.PUBLIC_URL}/.well-known/oauth-protected-resource"
     return JSONResponse(
         status_code=401,
         content={"error": "unauthorized"},
-        headers={"WWW-Authenticate": 'Bearer realm="finance-control-mcp"'},
+        headers={"WWW-Authenticate": f'Bearer resource_metadata="{resource_metadata}"'},
     )
 
 

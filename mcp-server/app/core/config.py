@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "change-this-in-production"
     ALGORITHM: str = "HS256"
     BACKEND_INTERNAL_URL: str = "http://backend:8000"
+    PUBLIC_URL: str = "https://finance.apti.dev"
 
 
 settings = Settings()
