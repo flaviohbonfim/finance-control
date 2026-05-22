@@ -28,6 +28,7 @@ services:
       - DATABASE_URL=mysql+aiomysql://finance_user:finance_password@db:3306/finance_control
       - SECRET_KEY=change-this-secret-key-in-production
       - CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+      - FRONTEND_URL=http://localhost:5173
     ports:
       - "8000:8000"
     depends_on:
@@ -50,6 +51,23 @@ services:
       - ./frontend:/app
       - /app/node_modules
     command: sh -c "npm install && npm run dev -- --host"
+
+  mcp-server:
+    build:
+      context: ./mcp-server
+      dockerfile: Dockerfile
+    container_name: finance_mcp
+    restart: unless-stopped
+    environment:
+      - SECRET_KEY=change-this-secret-key-in-production
+      - BACKEND_INTERNAL_URL=http://backend:8000
+    ports:
+      - "8001:8001"
+    depends_on:
+      - backend
+    volumes:
+      - ./mcp-server:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload --reload-dir /app/app
 
 volumes:
   mysql_data:

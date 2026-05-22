@@ -5,6 +5,7 @@ from app.api.v1.endpoints import (
     ai,
     auth,
     categories,
+    oauth,
     recurring_transactions,
     reports,
     telegram,
@@ -20,3 +21,4 @@ router.include_router(reports.router)
 router.include_router(transactions.router)
 router.include_router(ai.router)
 router.include_router(telegram.router)
+router.include_router(oauth.router)

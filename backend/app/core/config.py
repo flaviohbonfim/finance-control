@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""
     SMTP_FROM: str = ""
     GOOGLE_CLIENT_ID: str = ""
+    FRONTEND_URL: str = "http://localhost:5173"
+    MCP_ACCESS_TOKEN_EXPIRE_DAYS: int = 30
+    MCP_REFRESH_TOKEN_EXPIRE_DAYS: int = 90
 
     @property
     def cors_origins_list(self) -> list[str]:

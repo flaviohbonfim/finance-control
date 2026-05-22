@@ -17,6 +17,7 @@ import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
 import Profile from "@/pages/Profile";
 import ChatWidget from "@/components/chat/ChatWidget";
+import OAuthConsent from "@/pages/OAuthConsent";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { token, user } = useAuthStore();
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
         <Route path="/reset-password" element={<PublicRoute><ResetPassword /></PublicRoute>} />
+        <Route path="/oauth/authorize" element={<OAuthConsent />} />
         <Route
           path="/"
           element={<PrivateRoute><Layout /></PrivateRoute>}

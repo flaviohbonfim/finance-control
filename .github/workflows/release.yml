@@ -183,6 +183,18 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Build & push mcp-server image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./mcp-server
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/mcp-server:${{ needs.version.outputs.tag }}
+            ghcr.io/${{ github.repository }}/mcp-server:latest
+          cache-from: type=gha,scope=mcp-server
+          cache-to: type=gha,mode=max,scope=mcp-server
+
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest

@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "finance-control-mcp"
+version = "0.1.0"
+description = "MCP Server for Finance Control"
+authors = ["Flavio Bonfim <flaviohbonfim@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.115.0"
+uvicorn = {extras = ["standard"], version = "^0.32.0"}
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+httpx = "^0.28.0"
+pydantic-settings = "^2.6.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
