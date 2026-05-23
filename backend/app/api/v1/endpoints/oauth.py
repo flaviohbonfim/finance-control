@@ -24,6 +24,29 @@ _CODE_TTL = timedelta(minutes=5)
 _SUPPORTED_CLIENT_ID = "finance-control-mcp"
 
 
+# ── POST /oauth/register (RFC 7591 Dynamic Client Registration) ───────────────
+
+
+class _ClientRegistrationRequest(BaseModel):
+    redirect_uris: list[str] = []
+    client_name: str = ""
+    grant_types: list[str] = ["authorization_code"]
+    response_types: list[str] = ["code"]
+    token_endpoint_auth_method: str = "none"
+
+
+@router.post("/register", status_code=201)
+async def register_client(payload: _ClientRegistrationRequest):
+    return {
+        "client_id": _SUPPORTED_CLIENT_ID,
+        "client_id_issued_at": int(_now().timestamp()),
+        "redirect_uris": payload.redirect_uris,
+        "grant_types": payload.grant_types,
+        "response_types": payload.response_types,
+        "token_endpoint_auth_method": "none",
+    }
+
+
 def _now() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
 

@@ -83,6 +83,11 @@ async def _handle_message(msg: dict, user_id: int, token: str) -> dict | None:
     return _rpc_error(id_, -32601, f"Method not found: {method}")
 
 
+@app.get("/")
+async def mcp_discover():
+    return _unauthorized()
+
+
 @app.post("/")
 async def mcp_handler(request: Request):
     user_id = _validate_token(request.headers.get("Authorization"))
