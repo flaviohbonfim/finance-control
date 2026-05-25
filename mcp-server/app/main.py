@@ -9,6 +9,19 @@ from app.tools.executor import execute_tool
 app = FastAPI(title="Finance Control MCP", docs_url=None, redoc_url=None)
 
 _PROTOCOL_VERSION = "2024-11-05"
+_ORIGIN_EXEMPT_PATHS = {"/health"}
+
+
+@app.middleware("http")
+async def validate_origin(request: Request, call_next):
+    if request.url.path not in _ORIGIN_EXEMPT_PATHS:
+        origin = request.headers.get("Origin", "").rstrip("/").lower()
+        if not origin or origin not in settings.allowed_origins:
+            return JSONResponse(
+                status_code=403,
+                content={"error": "forbidden", "detail": "Origin not allowed"},
+            )
+    return await call_next(request)
 
 
 def _validate_token(authorization: str | None) -> int | None:

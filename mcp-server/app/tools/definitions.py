@@ -6,6 +6,11 @@ TOOLS = [
             "Inclui contas correntes, poupança, cartões de crédito e investimentos."
         ),
         "inputSchema": {"type": "object", "properties": {}, "required": []},
+        "annotations": {
+            "title": "Get Accounts",
+            "readOnlyHint": True,
+            "destructiveHint": False,
+        },
     },
     {
         "name": "get_transactions",
@@ -35,6 +40,11 @@ TOOLS = [
                 },
             },
         },
+        "annotations": {
+            "title": "Get Transactions",
+            "readOnlyHint": True,
+            "destructiveHint": False,
+        },
     },
     {
         "name": "get_monthly_summary",
@@ -55,6 +65,11 @@ TOOLS = [
                 },
             },
         },
+        "annotations": {
+            "title": "Get Monthly Summary",
+            "readOnlyHint": True,
+            "destructiveHint": False,
+        },
     },
     {
         "name": "get_categories",
@@ -69,6 +84,11 @@ TOOLS = [
                 },
             },
         },
+        "annotations": {
+            "title": "Get Categories",
+            "readOnlyHint": True,
+            "destructiveHint": False,
+        },
     },
     {
         "name": "get_recurring",
@@ -77,6 +97,11 @@ TOOLS = [
             "pagamentos mensais etc.)."
         ),
         "inputSchema": {"type": "object", "properties": {}, "required": []},
+        "annotations": {
+            "title": "Get Recurring Transactions",
+            "readOnlyHint": True,
+            "destructiveHint": False,
+        },
     },
     {
         "name": "get_dashboard",
@@ -85,6 +110,11 @@ TOOLS = [
             "e últimas transações. Ideal para uma visão geral rápida das finanças."
         ),
         "inputSchema": {"type": "object", "properties": {}, "required": []},
+        "annotations": {
+            "title": "Get Dashboard",
+            "readOnlyHint": True,
+            "destructiveHint": False,
+        },
     },
     {
         "name": "get_credit_card_bills",
@@ -96,5 +126,10 @@ TOOLS = [
             "próxima fatura ou débitos no cartão de crédito."
         ),
         "inputSchema": {"type": "object", "properties": {}, "required": []},
+        "annotations": {
+            "title": "Get Credit Card Bills",
+            "readOnlyHint": True,
+            "destructiveHint": False,
+        },
     },
 ]
