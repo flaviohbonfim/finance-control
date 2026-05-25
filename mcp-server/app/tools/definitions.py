@@ -15,28 +15,40 @@ TOOLS = [
     {
         "name": "get_transactions",
         "description": (
-            "Lista transações financeiras com filtros opcionais por período, "
-            "categoria, conta e tipo (receita/despesa)."
+            "Lista transações financeiras individuais com filtros. "
+            "IMPORTANTE: sempre informe start_date e end_date ao buscar transações de um mês — "
+            "sem filtro de data a API retorna todas as transações ordenadas pela data mais recente, "
+            "incluindo parcelas futuras (ex: parcela 10/12 com vencimento em 2027). "
+            "Para perguntas sobre total gasto em uma categoria num mês, prefira get_monthly_summary "
+            "que já retorna o breakdown por categoria. "
+            "Use get_transactions quando o usuário quiser ver a lista individual de lançamentos."
         ),
         "inputSchema": {
             "type": "object",
             "properties": {
                 "start_date": {
                     "type": "string",
-                    "description": "Data início no formato YYYY-MM-DD",
+                    "description": "Data início no formato YYYY-MM-DD. Sempre informe para consultas mensais.",
                 },
                 "end_date": {
                     "type": "string",
-                    "description": "Data fim no formato YYYY-MM-DD",
+                    "description": "Data fim no formato YYYY-MM-DD. Sempre informe para consultas mensais.",
                 },
                 "type": {
                     "type": "string",
                     "enum": ["income", "expense"],
                     "description": "Filtrar por tipo: income (receita) ou expense (despesa)",
                 },
+                "category_name": {
+                    "type": "string",
+                    "description": (
+                        "Nome da categoria para filtrar (ex: 'Alimentação', 'Lazer'). "
+                        "A busca é case-insensitive e suporta correspondência parcial."
+                    ),
+                },
                 "limit": {
                     "type": "integer",
-                    "description": "Número máximo de transações a retornar (padrão: 30)",
+                    "description": "Número máximo de transações a retornar (padrão: 100)",
                 },
             },
         },
@@ -49,8 +61,12 @@ TOOLS = [
     {
         "name": "get_monthly_summary",
         "description": (
-            "Retorna o resumo financeiro de um mês específico: total de receitas, "
-            "total de despesas, saldo do período e breakdown por categoria."
+            "Retorna o resumo completo de um mês: total de receitas, total de despesas, "
+            "saldo do período, breakdown de despesas por categoria (com valor e percentual) "
+            "e as maiores despesas do mês. "
+            "É a ferramenta ideal para perguntas como 'quanto gastei em maio?', "
+            "'qual foi minha maior despesa?', 'quanto gastei com alimentação no mês X?' "
+            "— use-a antes de recorrer a get_transactions para consultas agregadas."
         ),
         "inputSchema": {
             "type": "object",
