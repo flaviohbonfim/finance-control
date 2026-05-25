@@ -44,6 +44,10 @@ def _validate_token(authorization: str | None) -> int | None:
         payload = jwt.decode(
             authorization[7:], settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
+        # In oauth mode, only tokens explicitly issued by the OAuth flow are accepted.
+        # In jwt mode, any valid signed token passes (backward-compat).
+        if settings.MCP_AUTH_MODE == "oauth" and payload.get("type") != "mcp_access":
+            return None
         return int(payload["sub"])
     except (JWTError, KeyError, ValueError):
         return None

@@ -64,7 +64,7 @@ def _verify_pkce(code_verifier: str, code_challenge: str) -> bool:
 def _create_mcp_access_token(user_id: int) -> str:
     expire = _now() + timedelta(days=settings.MCP_ACCESS_TOKEN_EXPIRE_DAYS)
     return jwt.encode(
-        {"sub": str(user_id), "exp": expire},
+        {"sub": str(user_id), "type": "mcp_access", "exp": expire},
         settings.SECRET_KEY,
         algorithm=settings.ALGORITHM,
     )

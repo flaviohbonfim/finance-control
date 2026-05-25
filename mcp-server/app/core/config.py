@@ -11,13 +11,14 @@ class Settings(BaseSettings):
     # Comma-separated allowed Origin values for browser-based requests.
     # Server-to-server clients (e.g. Claude backend) send no Origin and are always allowed.
     MCP_ALLOWED_ORIGINS: str = "https://claude.ai,https://claude.com"
+    # "oauth" = only accept tokens issued by the OAuth flow (type: mcp_access).
+    # "jwt"   = accept any valid signed JWT — backward-compat for pre-OAuth users.
+    MCP_AUTH_MODE: str = "oauth"
 
     @property
     def allowed_origins(self) -> frozenset[str]:
         return frozenset(
-            o.strip().rstrip("/").lower()
-            for o in self.MCP_ALLOWED_ORIGINS.split(",")
-            if o.strip()
+            o.strip().rstrip("/").lower() for o in self.MCP_ALLOWED_ORIGINS.split(",") if o.strip()
         )
 
 
