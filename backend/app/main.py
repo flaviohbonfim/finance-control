@@ -37,8 +37,22 @@ async def oauth_discovery():
             "issuer": base,
             "authorization_endpoint": f"{base}/api/v1/oauth/authorize",
             "token_endpoint": f"{base}/api/v1/oauth/token",
+            "registration_endpoint": f"{base}/api/v1/oauth/register",
             "response_types_supported": ["code"],
             "grant_types_supported": ["authorization_code", "refresh_token"],
             "code_challenge_methods_supported": ["S256"],
+        }
+    )
+
+
+@app.get("/.well-known/oauth-protected-resource")
+async def resource_metadata():
+    base = settings.FRONTEND_URL.rstrip("/")
+    return JSONResponse(
+        {
+            "resource": f"{base}/mcp",
+            "authorization_servers": [base],
+            "bearer_methods_supported": ["header"],
+            "scopes_supported": [],
         }
     )

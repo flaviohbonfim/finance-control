@@ -10,11 +10,16 @@ app = FastAPI(title="Finance Control MCP", docs_url=None, redoc_url=None)
 
 _PROTOCOL_VERSION = "2024-11-05"
 _ORIGIN_EXEMPT_PATHS = {"/health"}
+# GET / is the public discovery endpoint — no Origin required
+_ORIGIN_EXEMPT_GET_PATHS = {"/"}
 
 
 @app.middleware("http")
 async def validate_origin(request: Request, call_next):
-    if request.url.path not in _ORIGIN_EXEMPT_PATHS:
+    exempt = request.url.path in _ORIGIN_EXEMPT_PATHS or (
+        request.method == "GET" and request.url.path in _ORIGIN_EXEMPT_GET_PATHS
+    )
+    if not exempt:
         origin = request.headers.get("Origin", "").rstrip("/").lower()
         if not origin or origin not in settings.allowed_origins:
             return JSONResponse(
