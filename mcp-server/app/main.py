@@ -1,10 +1,6 @@
-import logging
-
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from jose import JWTError, jwt
-
-logger = logging.getLogger("mcp")
 
 from app.core.config import settings
 from app.tools.definitions import TOOLS
@@ -13,38 +9,31 @@ from app.tools.executor import execute_tool
 app = FastAPI(title="Finance Control MCP", docs_url=None, redoc_url=None)
 
 _PROTOCOL_VERSION = "2024-11-05"
-_ORIGIN_EXEMPT_PATHS = {"/health"}
-# GET / is the public discovery endpoint — no Origin required
-_ORIGIN_EXEMPT_GET_PATHS = {"/"}
 
 
 @app.middleware("http")
 async def validate_origin(request: Request, call_next):
-    exempt = request.url.path in _ORIGIN_EXEMPT_PATHS or (
-        request.method == "GET" and request.url.path in _ORIGIN_EXEMPT_GET_PATHS
-    )
-    if not exempt:
-        origin = request.headers.get("Origin", "").rstrip("/").lower()
-        if not origin or origin not in settings.allowed_origins:
-            logger.warning("origin_blocked: '%s' allowed=%s", origin, settings.allowed_origins)
-            return JSONResponse(
-                status_code=403,
-                content={"error": "forbidden", "detail": "Origin not allowed"},
-            )
+    origin = request.headers.get("Origin", "").rstrip("/").lower()
+    # Only block when Origin IS present and not in the allowlist.
+    # Server-to-server clients (Claude backend) send no Origin and are allowed through.
+    # This protects against DNS rebinding attacks from browsers.
+    if origin and origin not in settings.allowed_origins:
+        return JSONResponse(
+            status_code=403,
+            content={"error": "forbidden", "detail": "Origin not allowed"},
+        )
     return await call_next(request)
 
 
 def _validate_token(authorization: str | None) -> int | None:
     if not authorization or not authorization.startswith("Bearer "):
-        logger.warning("token_missing origin=%s", "no-auth")
         return None
     try:
         payload = jwt.decode(
             authorization[7:], settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
         return int(payload["sub"])
-    except (JWTError, KeyError, ValueError) as exc:
-        logger.warning("token_invalid: %s", exc)
+    except (JWTError, KeyError, ValueError):
         return None
 
 

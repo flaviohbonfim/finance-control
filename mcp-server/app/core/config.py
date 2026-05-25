@@ -8,7 +8,9 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     BACKEND_INTERNAL_URL: str = "http://backend:8000"
     PUBLIC_URL: str = "https://finance.apti.dev"
-    MCP_ALLOWED_ORIGINS: str = "https://claude.ai,https://claude.com,https://finance.apti.dev,http://localhost:5173"
+    # Comma-separated allowed Origin values for browser-based requests.
+    # Server-to-server clients (e.g. Claude backend) send no Origin and are always allowed.
+    MCP_ALLOWED_ORIGINS: str = "https://claude.ai,https://claude.com"
 
     @property
     def allowed_origins(self) -> frozenset[str]:
