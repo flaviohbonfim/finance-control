@@ -1,6 +1,10 @@
+import logging
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from jose import JWTError, jwt
+
+logger = logging.getLogger("mcp")
 
 from app.core.config import settings
 from app.tools.definitions import TOOLS
@@ -22,6 +26,7 @@ async def validate_origin(request: Request, call_next):
     if not exempt:
         origin = request.headers.get("Origin", "").rstrip("/").lower()
         if not origin or origin not in settings.allowed_origins:
+            logger.warning("origin_blocked: '%s' allowed=%s", origin, settings.allowed_origins)
             return JSONResponse(
                 status_code=403,
                 content={"error": "forbidden", "detail": "Origin not allowed"},
@@ -31,13 +36,15 @@ async def validate_origin(request: Request, call_next):
 
 def _validate_token(authorization: str | None) -> int | None:
     if not authorization or not authorization.startswith("Bearer "):
+        logger.warning("token_missing origin=%s", "no-auth")
         return None
     try:
         payload = jwt.decode(
             authorization[7:], settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
         return int(payload["sub"])
-    except (JWTError, KeyError, ValueError):
+    except (JWTError, KeyError, ValueError) as exc:
+        logger.warning("token_invalid: %s", exc)
         return None
 
 
