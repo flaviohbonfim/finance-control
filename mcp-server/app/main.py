@@ -1,6 +1,8 @@
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from jose import JWTError, jwt
+from starlette.datastructures import Headers
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.core.config import settings
 from app.tools.definitions import TOOLS
@@ -11,18 +13,28 @@ app = FastAPI(title="Finance Control MCP", docs_url=None, redoc_url=None)
 _PROTOCOL_VERSION = "2024-11-05"
 
 
-@app.middleware("http")
-async def validate_origin(request: Request, call_next):
-    origin = request.headers.get("Origin", "").rstrip("/").lower()
-    # Only block when Origin IS present and not in the allowlist.
-    # Server-to-server clients (Claude backend) send no Origin and are allowed through.
-    # This protects against DNS rebinding attacks from browsers.
-    if origin and origin not in settings.allowed_origins:
-        return JSONResponse(
-            status_code=403,
-            content={"error": "forbidden", "detail": "Origin not allowed"},
-        )
-    return await call_next(request)
+class _OriginMiddleware:
+    """Pure ASGI middleware — avoids BaseHTTPMiddleware's Content-Length conflicts with HTTP/1.0."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http":
+            origin = Headers(scope=scope).get("origin", "").rstrip("/").lower()
+            # Only block when Origin IS present and not in the allowlist.
+            # Server-to-server clients (Claude backend) send no Origin and pass through.
+            if origin and origin not in settings.allowed_origins:
+                response = JSONResponse(
+                    status_code=403,
+                    content={"error": "forbidden", "detail": "Origin not allowed"},
+                )
+                await response(scope, receive, send)
+                return
+        await self.app(scope, receive, send)
+
+
+app.add_middleware(_OriginMiddleware)
 
 
 def _validate_token(authorization: str | None) -> int | None:
@@ -125,7 +137,7 @@ async def mcp_handler(request: Request):
 
     resp = await _handle_message(body, user_id, token)
     if resp is None:
-        return JSONResponse({}, status_code=204)
+        return Response(status_code=204)
     return JSONResponse(resp)
 
 
