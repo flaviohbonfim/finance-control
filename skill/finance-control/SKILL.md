@@ -1,6 +1,6 @@
 ---
 name: finance-control
-description: Consulta dados financeiros pessoais via MCP Finance Control. Use para responder perguntas sobre saldos, transações, gastos por categoria, resumos mensais, assinaturas recorrentes e faturas de cartão de crédito. Ative sempre que o usuário mencionar finanças, dinheiro, gastos, saldo, cartão, fatura, orçamento ou categorias de despesa.
+description: Query personal financial data via MCP Finance Control. Use to answer questions about balances, transactions, spending by category, monthly summaries, recurring subscriptions, and credit card bills. Activate whenever the user mentions finances, money, spending, balance, card, bill, budget, or expense categories.
 compatibility: Requires Finance Control MCP connector configured in Claude.ai
 metadata:
   author: finance-control
