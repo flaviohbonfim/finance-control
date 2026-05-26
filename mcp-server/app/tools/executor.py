@@ -80,8 +80,10 @@ async def execute_tool(name: str, arguments: dict, token: str) -> str:
         tx_type = arguments.get("type")
         sign_total = "+" if tx_type == "income" else "-" if tx_type == "expense" else "±"
 
+        period = f"{start_date} → {end_date}" if start_date and end_date else "sem filtro de data"
         lines = [
-            f"**{len(items)} transação(ões) encontrada(s) — Total: {sign_total}{_fmt_brl(total)}**"
+            f"**{len(items)} transação(ões) — período: {period} — Total: {sign_total}{_fmt_brl(total)}**",
+            "(itens com '(N/M)' são parcelas com vencimento neste período — datas corretas)",
         ]
         for t in items:
             sign = "+" if t["type"] == "income" else "-"

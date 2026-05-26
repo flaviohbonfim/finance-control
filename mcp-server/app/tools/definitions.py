@@ -15,12 +15,13 @@ TOOLS = [
     {
         "name": "get_transactions",
         "description": (
-            "Lista transações financeiras individuais. "
-            "Para consultas mensais use os parâmetros month e year — o servidor monta o intervalo "
-            "de datas automaticamente, evitando o problema de parcelas futuras. "
-            "Sem filtro de data a API retorna todas as transações pela data mais recente, "
-            "incluindo parcelas com vencimento em anos futuros — nunca chame sem filtro de período. "
-            "Para totais e breakdown por categoria, prefira get_monthly_summary."
+            "Lista transações financeiras individuais de um período. "
+            "Sempre informe month+year (preferido) ou start_date+end_date. "
+            "Transações parceladas aparecem com '(N/M)' na descrição — isso indica a parcela N de M; "
+            "a data da transação é o vencimento desta parcela no mês consultado, o que é correto. "
+            "Os resultados retornados já estão filtrados pelo período solicitado; não remova o filtro "
+            "de data mesmo que veja itens parcelados — eles pertencem ao mês consultado. "
+            "Para totais e breakdown por categoria use get_monthly_summary."
         ),
         "inputSchema": {
             "type": "object",
