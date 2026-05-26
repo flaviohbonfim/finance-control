@@ -38,6 +38,15 @@ def _month_range(month: int, year: int) -> tuple[str, str]:
 
 
 async def execute_tool(name: str, arguments: dict, token: str) -> str:
+    try:
+        return await _execute(name, arguments, token)
+    except httpx.HTTPStatusError as exc:
+        return f"Erro ao buscar dados: o servidor retornou status {exc.response.status_code}."
+    except httpx.RequestError:
+        return "Erro de conexão com o servidor. Tente novamente."
+
+
+async def _execute(name: str, arguments: dict, token: str) -> str:
     today = date.today()
 
     # ── get_accounts ──────────────────────────────────────────────────────────
