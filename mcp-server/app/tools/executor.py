@@ -17,13 +17,30 @@ async def call_backend(path: str, token: str, params: dict | None = None) -> dic
         return resp.json()
 
 
+async def post_backend(path: str, token: str, body: dict) -> dict:
+    async with httpx.AsyncClient(base_url=settings.BACKEND_INTERNAL_URL, timeout=30) as client:
+        resp = await client.post(
+            path,
+            headers={"Authorization": f"Bearer {token}"},
+            json=body,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+
 def _fmt_brl(value) -> str:
     return f"R$ {float(value):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def _month_range(month: int, year: int) -> tuple[str, str]:
+    last = calendar.monthrange(year, month)[1]
+    return f"{year}-{month:02d}-01", f"{year}-{month:02d}-{last:02d}"
 
 
 async def execute_tool(name: str, arguments: dict, token: str) -> str:
     today = date.today()
 
+    # ── get_accounts ──────────────────────────────────────────────────────────
     if name == "get_accounts":
         data = await call_backend("/api/v1/accounts", token)
         if not data:
@@ -33,58 +50,65 @@ async def execute_tool(name: str, arguments: dict, token: str) -> str:
             lines.append(f"- {acc['name']} ({acc['type']}): {_fmt_brl(acc['balance'])}")
         return "\n".join(lines)
 
-    if name == "get_transactions":
+    # ── list_transactions ────────────────────────────────────────────────────
+    if name == "list_transactions":
+        month = arguments.get("month", today.month)
+        year = arguments.get("year", today.year)
+        date_from, date_to = _month_range(int(month), int(year))
+
+        tx_type = arguments.get("type")  # "income" | "expense" | None
         category_name = (arguments.get("category_name") or "").strip().lower()
 
-        # Resolve month/year shorthand to explicit date range
-        start_date = arguments.get("start_date")
-        end_date = arguments.get("end_date")
-        month = arguments.get("month")
-        year = arguments.get("year")
-        if month and year and not start_date:
-            last_day = calendar.monthrange(int(year), int(month))[1]
-            start_date = f"{int(year)}-{int(month):02d}-01"
-            end_date = f"{int(year)}-{int(month):02d}-{last_day:02d}"
-
-        params = {
-            "start_date": start_date,
-            "end_date": end_date,
-            "transaction_type": arguments.get("type"),
-            "limit": arguments.get("limit", 100),
-        }
-
-        # If filtering by category, resolve to category_id first
+        # Resolve category name → id
+        category_id = None
         if category_name:
             cats = await call_backend("/api/v1/categories", token)
-            match = next(
-                (c for c in cats if c["name"].lower() == category_name),
-                None,
-            )
+            match = next((c for c in cats if c["name"].lower() == category_name), None)
+            if not match:
+                match = next((c for c in cats if category_name in c["name"].lower()), None)
             if match:
-                params["category_id"] = match["id"]
-            else:
-                # Partial match fallback
-                match = next(
-                    (c for c in cats if category_name in c["name"].lower()),
-                    None,
-                )
-                if match:
-                    params["category_id"] = match["id"]
+                category_id = match["id"]
+
+        params = {
+            "date_from": date_from,
+            "date_to": date_to,
+            "page_size": 100,
+        }
+        if tx_type:
+            params["type"] = tx_type
+        if category_id:
+            params["category_id"] = category_id
 
         data = await call_backend("/api/v1/transactions", token, params)
-        items = data if isinstance(data, list) else data.get("items", [])
+        items = data.get("items", [])
+        total_count = data.get("total", len(items))
+
         if not items:
-            return "Nenhuma transação encontrada para os filtros informados."
+            period_label = f"{month:02d}/{year}"
+            if tx_type == "expense":
+                return f"Nenhuma despesa encontrada em {period_label}."
+            if tx_type == "income":
+                return f"Nenhuma receita encontrada em {period_label}."
+            return f"Nenhuma transação encontrada em {period_label}."
 
-        total = sum(float(t["amount"]) for t in items)
-        tx_type = arguments.get("type")
-        sign_total = "+" if tx_type == "income" else "-" if tx_type == "expense" else "±"
+        total_amount = sum(float(t["amount"]) for t in items)
+        period_label = f"{int(month):02d}/{int(year)}"
 
-        period = f"{start_date} → {end_date}" if start_date and end_date else "sem filtro de data"
-        lines = [
-            f"**{len(items)} transação(ões) — período: {period} — Total: {sign_total}{_fmt_brl(total)}**",
-            "(itens com '(N/M)' são parcelas com vencimento neste período — datas corretas)",
-        ]
+        if tx_type == "expense":
+            header = (
+                f"**{len(items)} despesa(s) em {period_label} — Total: -{_fmt_brl(total_amount)}**"
+            )
+        elif tx_type == "income":
+            header = (
+                f"**{len(items)} receita(s) em {period_label} — Total: +{_fmt_brl(total_amount)}**"
+            )
+        else:
+            header = f"**{len(items)} transação(ões) em {period_label} — Total: {_fmt_brl(total_amount)}**"
+
+        if total_count > len(items):
+            header += f" *(mostrando {len(items)} de {total_count})*"
+
+        lines = [header]
         for t in items:
             sign = "+" if t["type"] == "income" else "-"
             cat = t.get("category") or {}
@@ -96,6 +120,7 @@ async def execute_tool(name: str, arguments: dict, token: str) -> str:
             )
         return "\n".join(lines)
 
+    # ── get_monthly_summary ───────────────────────────────────────────────────
     if name == "get_monthly_summary":
         month = arguments.get("month", today.month)
         year = arguments.get("year", today.year)
@@ -106,7 +131,7 @@ async def execute_tool(name: str, arguments: dict, token: str) -> str:
         expense = _fmt_brl(data.get("expense", 0))
         balance = float(data.get("income", 0)) - float(data.get("expense", 0))
         lines = [
-            f"**Resumo de {month:02d}/{year}:**",
+            f"**Resumo de {int(month):02d}/{int(year)}:**",
             f"- Receitas: {income}",
             f"- Despesas: {expense}",
             f"- Saldo do período: {_fmt_brl(balance)}",
@@ -129,6 +154,7 @@ async def execute_tool(name: str, arguments: dict, token: str) -> str:
                 lines.append(f"- {t['description']}: {_fmt_brl(t['amount'])} ({cat_name})")
         return "\n".join(lines)
 
+    # ── get_categories ────────────────────────────────────────────────────────
     if name == "get_categories":
         params = {"type": arguments.get("type")} if arguments.get("type") else {}
         data = await call_backend("/api/v1/categories", token, params)
@@ -143,6 +169,7 @@ async def execute_tool(name: str, arguments: dict, token: str) -> str:
             lines.append(f"**{label}:** {', '.join(names)}")
         return "\n".join(lines)
 
+    # ── get_recurring ─────────────────────────────────────────────────────────
     if name == "get_recurring":
         data = await call_backend("/api/v1/recurring-transactions", token)
         if not data:
@@ -152,6 +179,7 @@ async def execute_tool(name: str, arguments: dict, token: str) -> str:
             lines.append(f"- {r['description']}: {_fmt_brl(r['amount'])} ({r['frequency']})")
         return "\n".join(lines)
 
+    # ── get_dashboard ─────────────────────────────────────────────────────────
     if name == "get_dashboard":
         data = await call_backend("/api/v1/reports/dashboard", token)
         lines = [
@@ -170,6 +198,7 @@ async def execute_tool(name: str, arguments: dict, token: str) -> str:
                 )
         return "\n".join(lines)
 
+    # ── get_credit_card_bills ─────────────────────────────────────────────────
     if name == "get_credit_card_bills":
         data = await call_backend("/api/v1/reports/credit-card-bills", token)
         cards = data if isinstance(data, list) else data.get("cards", [])
