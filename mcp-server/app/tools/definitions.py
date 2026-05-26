@@ -15,24 +15,31 @@ TOOLS = [
     {
         "name": "get_transactions",
         "description": (
-            "Lista transações financeiras individuais com filtros. "
-            "IMPORTANTE: sempre informe start_date e end_date ao buscar transações de um mês — "
-            "sem filtro de data a API retorna todas as transações ordenadas pela data mais recente, "
-            "incluindo parcelas futuras (ex: parcela 10/12 com vencimento em 2027). "
-            "Para perguntas sobre total gasto em uma categoria num mês, prefira get_monthly_summary "
-            "que já retorna o breakdown por categoria. "
-            "Use get_transactions quando o usuário quiser ver a lista individual de lançamentos."
+            "Lista transações financeiras individuais. "
+            "Para consultas mensais use os parâmetros month e year — o servidor monta o intervalo "
+            "de datas automaticamente, evitando o problema de parcelas futuras. "
+            "Sem filtro de data a API retorna todas as transações pela data mais recente, "
+            "incluindo parcelas com vencimento em anos futuros — nunca chame sem filtro de período. "
+            "Para totais e breakdown por categoria, prefira get_monthly_summary."
         ),
         "inputSchema": {
             "type": "object",
             "properties": {
+                "month": {
+                    "type": "integer",
+                    "description": "Mês (1-12). Use com year para consultas mensais (preferido sobre start_date/end_date).",
+                },
+                "year": {
+                    "type": "integer",
+                    "description": "Ano com 4 dígitos. Use com month.",
+                },
                 "start_date": {
                     "type": "string",
-                    "description": "Data início no formato YYYY-MM-DD. Sempre informe para consultas mensais.",
+                    "description": "Data início YYYY-MM-DD. Use apenas para intervalos personalizados.",
                 },
                 "end_date": {
                     "type": "string",
-                    "description": "Data fim no formato YYYY-MM-DD. Sempre informe para consultas mensais.",
+                    "description": "Data fim YYYY-MM-DD. Use apenas para intervalos personalizados.",
                 },
                 "type": {
                     "type": "string",

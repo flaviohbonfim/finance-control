@@ -1,3 +1,4 @@
+import calendar
 from datetime import date
 
 import httpx
@@ -34,9 +35,20 @@ async def execute_tool(name: str, arguments: dict, token: str) -> str:
 
     if name == "get_transactions":
         category_name = (arguments.get("category_name") or "").strip().lower()
+
+        # Resolve month/year shorthand to explicit date range
+        start_date = arguments.get("start_date")
+        end_date = arguments.get("end_date")
+        month = arguments.get("month")
+        year = arguments.get("year")
+        if month and year and not start_date:
+            last_day = calendar.monthrange(int(year), int(month))[1]
+            start_date = f"{int(year)}-{int(month):02d}-01"
+            end_date = f"{int(year)}-{int(month):02d}-{last_day:02d}"
+
         params = {
-            "start_date": arguments.get("start_date"),
-            "end_date": arguments.get("end_date"),
+            "start_date": start_date,
+            "end_date": end_date,
             "transaction_type": arguments.get("type"),
             "limit": arguments.get("limit", 100),
         }
